@@ -1,104 +1,103 @@
-// #pragma once
+#pragma once
 
-// #include "KitCAT/Utils/Containers.h"
-// #include <gtest/gtest.h>
-// #include <numeric>
+#include "Mempp/Container.h"
+#include <gtest/gtest.h>
 
-// // Test fixture for container tests
-// class ContainersTest : public ::testing::Test
-// {
-// protected:
-// 	struct TestCounter
-// 	{
-// 		static int constructions;
-// 		static int destructions;
-// 		static int copies;
-// 		static int moves;
+// Test fixture for container tests
+class ContainersTest : public ::testing::Test
+{
+protected:
+	struct TestCounter
+	{
+		static int constructions;
+		static int destructions;
+		static int copies;
+		static int moves;
 
-// 		int value;
+		int value;
 
-// 		TestCounter(int v = 0) : value(v) { constructions++; }
-// 		~TestCounter() { destructions++; value = -1; }
-// 		TestCounter(const TestCounter& o) : value(o.value)
-// 		{
-// 			constructions++;
-// 			copies++;
-// 		}
-// 		TestCounter(TestCounter&& o) noexcept : value(o.value)
-// 		{
-// 			constructions++;
-// 			moves++;
-// 			o.value = -1;
-// 		}
-// 		TestCounter& operator=(const TestCounter& o)
-// 		{
-// 			value = o.value;
-// 			copies++;
-// 			return *this;
-// 		}
-// 		TestCounter& operator=(TestCounter&& o) noexcept
-// 		{
-// 			value = o.value;
-// 			moves++;
-// 			o.value = -1;
-// 			return *this;
-// 		}
+		TestCounter(int v = 0) : value(v) { constructions++; }
+		~TestCounter() { destructions++; value = -1; }
+		TestCounter(const TestCounter& o) : value(o.value)
+		{
+			constructions++;
+			copies++;
+		}
+		TestCounter(TestCounter&& o) noexcept : value(o.value)
+		{
+			constructions++;
+			moves++;
+			o.value = -1;
+		}
+		TestCounter& operator=(const TestCounter& o)
+		{
+			value = o.value;
+			copies++;
+			return *this;
+		}
+		TestCounter& operator=(TestCounter&& o) noexcept
+		{
+			value = o.value;
+			moves++;
+			o.value = -1;
+			return *this;
+		}
 
-// 		static void reset()
-// 		{
-// 			constructions = 0;
-// 			destructions = 0;
-// 			copies = 0;
-// 			moves = 0;
-// 		}
-// 	};
+		static void reset()
+		{
+			constructions = 0;
+			destructions = 0;
+			copies = 0;
+			moves = 0;
+		}
+	};
 
-// 	void SetUp() override { TestCounter::reset(); }
-// };
+	void SetUp() override { TestCounter::reset(); }
+};
 
-// int ContainersTest::TestCounter::constructions = 0;
-// int ContainersTest::TestCounter::destructions = 0;
-// int ContainersTest::TestCounter::copies = 0;
-// int ContainersTest::TestCounter::moves = 0;
+int ContainersTest::TestCounter::constructions = 0;
+int ContainersTest::TestCounter::destructions = 0;
+int ContainersTest::TestCounter::copies = 0;
+int ContainersTest::TestCounter::moves = 0;
 
-// //------------------------------------------------------
-// //                      AnyIterator
-// //------------------------------------------------------
-// TEST_F(ContainersTest, AnyIterator_Vector)
-// {
-// 	std::vector<int> vec = {10, 20, 30};
-// 	AnyIterator<int> it(vec.begin());
-// 	AnyIterator<int> end(vec.end());
+//------------------------------------------------------
+//                      AnyIterator
+//------------------------------------------------------
+TEST_F(ContainersTest, AnyIterator_Vector)
+{
+	std::vector<int> vec = {10, 20, 30};
+	AnyIterator<int> it(vec.begin());
+	AnyIterator<int> end(vec.end());
 
-// 	EXPECT_EQ(*it, 10);
-// 	++it;
-// 	EXPECT_EQ(*it, 20);
-// 	EXPECT_NE(it, end);
-// 	it++;
-// 	EXPECT_EQ(*it, 30);
-// 	++it;
-// 	EXPECT_EQ(it, end);
-// }
+	EXPECT_EQ(*it, 10);
+	++it;
+	EXPECT_EQ(*it, 20);
+	EXPECT_NE(it, end);
+	it++;
+	EXPECT_EQ(*it, 30);
+	++it;
+	EXPECT_EQ(it, end);
+}
 
-// TEST_F(ContainersTest, AnyIterator_Copy)
-// {
-// 	std::vector<int> vec = {10, 20};
-// 	AnyIterator<int> it1(vec.begin());
-// 	AnyIterator<int> it2 = it1; // Copy constructor
+TEST_F(ContainersTest, AnyIterator_Copy)
+{
+	std::vector<int> vec = {10, 20};
+	AnyIterator<int> it1(vec.begin());
+	AnyIterator<int> it2 = it1; // Copy constructor
 
-// 	EXPECT_EQ(it1, it2);
-// 	EXPECT_EQ(*it1, 10);
-// 	EXPECT_EQ(*it2, 10);
+	EXPECT_EQ(it1, it2);
+	EXPECT_EQ(*it1, 10);
+	EXPECT_EQ(*it2, 10);
 
-// 	++it1;
-// 	EXPECT_NE(it1, it2);
-// 	EXPECT_EQ(*it1, 20);
-// 	EXPECT_EQ(*it2, 10);
+	++it1;
+	EXPECT_NE(it1, it2);
+	EXPECT_EQ(*it1, 20);
+	EXPECT_EQ(*it2, 10);
 
-// 	it2 = it1; // Copy assignment
-// 	EXPECT_EQ(it1, it2);
-// 	EXPECT_EQ(*it2, 20);
-// }
+	it2 = it1; // Copy assignment
+	EXPECT_EQ(it1, it2);
+	EXPECT_EQ(*it2, 20);
+}
 
 // //------------------------------------------------------
 // //                      StaticVector

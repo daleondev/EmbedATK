@@ -242,17 +242,20 @@ private:
     bool m_isValid = true;
 };
 
-template <typename T>
-struct is_tuple : std::false_type {};
+template <typename Base, typename T>
+struct is_base_of_all : std::false_type {};
 
-template <typename... Args>
-struct is_tuple<std::tuple<Args...>> : std::true_type {};
+template <typename Base, typename... DerivedTypes>
+struct is_base_of_all<Base, std::tuple<DerivedTypes...>>
+{
+    static constexpr bool value = (std::is_base_of_v<Base, DerivedTypes> && ...);
+};
 
-template <typename T>
-inline constexpr bool is_tuple_v = is_tuple<T>::value;
+template <typename Base, typename T>
+inline constexpr bool is_base_of_all_v = is_base_of_all<Base, T>::value;
 
 template<typename Base, typename DerivedTypes>
-requires is_tuple_v<DerivedTypes>
+requires is_base_of_all_v<Base, DerivedTypes>
 using StaticPolymorphic = StaticPolymorphicStore<Base, MaxAllocData<DerivedTypes>::data>;
 
 //------------------------------------------------------

@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "name": "GCC",
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/include",
@@ -9,9 +9,23 @@
                 "${workspaceFolder}/build/_deps/gtest-src/googlemock/include"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/gcc",
+            "compilerPath": "/usr/bin/g++",
             "cppStandard": "c++20",
-            "intelliSenseMode": "linux-gcc-x64"
+            "intelliSenseMode": "gcc-x64"
+        },
+        {
+            "name": "Clang",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/include",
+                "/home/david/development/llvm-install/include/c++/v1",
+                "${workspaceFolder}/build/_deps/gtest-src/googletest/include",
+                "${workspaceFolder}/build/_deps/gtest-src/googlemock/include"
+            ],
+            "defines": [],
+            "compilerPath": "/home/david/development/llvm-install/bin/clang++",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "clang-x64"
         }
     ],
     "version": 4

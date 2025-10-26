@@ -595,15 +595,13 @@ class StaticDequePool : public IPool
         FreeBlock* next = nullptr;
     };
 
-#if 1//defined(_GLIBCXX_DEQUE)
+#if defined(__GLIBCXX__)
     struct DequeData : public std::pmr::deque<T>
     {
         inline static constexpr size_t NumElementsInBlock = std::__deque_buf_size(sizeof(T));
         inline static constexpr size_t NumNodes = (N == 0) ? 0 : ((N - 1) / NumElementsInBlock + 1);
-        inline static constexpr size_t MapSize = std::max(
-            static_cast<size_t>(std::pmr::deque<T>::_Deque_base::_S_initial_map_size),
-            NumNodes + 2
-        ) * sizeof(void*);
+        inline static constexpr size_t InitialMapSize = static_cast<size_t>(std::pmr::deque<T>::_Deque_base::_S_initial_map_size);
+        inline static constexpr size_t MapSize = std::max(InitialMapSize, NumNodes + 2) * sizeof(void*);
         inline static constexpr size_t DataSize = NumNodes*sizeof(T)*std::__deque_buf_size(sizeof(T));
         inline static constexpr size_t AllocSize = MapSize + DataSize;
     };
@@ -622,19 +620,18 @@ class StaticDequePool : public IPool
     {
         inline static constexpr size_t NumElementsInBlock = detail::__libcxx_deque_buf_size(sizeof(T));
         inline static constexpr size_t NumNodes = (N == 0) ? 0 : ((N - 1) / BlockSizeInElements + 1);
-        inline static constexpr size_t MapSize = std::max(
-            detail::__libcxx_initial_map_size,
-            NumNodes + 2
-        ) * sizeof(void*);
+        inline static constexpr size_t InitialMapSize = detail::__libcxx_initial_map_size;
+        inline static constexpr size_t MapSize = std::max(InitialMapSize, NumNodes + 2) * sizeof(void*);
         inline static constexpr size_t DataSize = NumNodes * BlockSizeInElements * sizeof(T);
         inline static constexpr size_t AllocSize = MapSize + DataSize;
     };
 #endif
 
-    static constexpr size_t NumBlocks   = DequeData::NumNodes;
-    static constexpr size_t BlockSize   = DequeData::NumElementsInBlock * sizeof(T);
-    static constexpr size_t MapSize     = DequeData::MapSize;
-    static constexpr size_t DataSize    = DequeData::DataSize;
+    static constexpr size_t NumBlocks       = DequeData::NumNodes;
+    static constexpr size_t BlockSize       = DequeData::NumElementsInBlock * sizeof(T);
+    static constexpr size_t InitialMapSize  = DequeData::InitialMapSize;
+    static constexpr size_t MapSize         = DequeData::MapSize;
+    static constexpr size_t DataSize        = DequeData::DataSize;
 
     static_assert(BlockSize >= sizeof(FreeBlock),
 	  "invalid block size, size needs to be at least the size of a pointer");
@@ -713,7 +710,7 @@ private:
         return this == &other;
     }
 
-    StaticBuffer<2*MapSize, alignof(uintptr_t)> m_mapBuff;
+    StaticBuffer<MapSize == InitialMapSize ? MapSize : 2*MapSize, alignof(uintptr_t)> m_mapBuff;
     StaticBuffer<DataSize, alignof(T)> m_blockBuff;
     FreeBlock* m_freeBlocks;
 };
