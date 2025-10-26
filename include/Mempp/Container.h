@@ -95,6 +95,13 @@ public:
         other.m_self.get()->cloneTo(m_self);
     }
 
+    template<typename OtherT>
+    AnyIterator(const AnyIterator<OtherT>& other) 
+    requires(std::is_const_v<T> && std::is_same_v<T, const OtherT>)
+    {
+        other.getConcept()->cloneToConst(m_self);
+    }
+
     AnyIterator(AnyIterator&& other) noexcept
     {
         other.m_self.get()->transferTo(m_self);
@@ -185,6 +192,7 @@ private:
         // --- modification
         // ----------------------------------------
         virtual void cloneTo(IPolymorphic<Concept>& other) const = 0;
+        virtual void cloneToConst(IPolymorphic<typename AnyIterator<const T>::Concept>& other) const = 0;
         virtual void transferTo(IPolymorphic<Concept>& other) const = 0;
         virtual void increment() = 0;
     };
@@ -227,6 +235,16 @@ private:
             other.template construct<Model<IterT>>(iter);
         }
 
+        void cloneToConst(IPolymorphic<typename AnyIterator<const T>::Concept>& other) const override
+        {
+            if constexpr (std::is_const_v<T>) {
+                cloneTo(other);
+            }
+            else {
+                other.template construct<typename AnyIterator<const T>::template Model<IterT>>(iter);
+            }
+        }
+
         void transferTo(IPolymorphic<Concept>& other) const override 
         {
             other.template construct<Model<IterT>>(std::move(iter));
@@ -239,6 +257,8 @@ private:
         // ----------------------------------------
         IterT iter;
     };
+
+    const Concept* getConcept() const { return m_self.get(); }
 
     // ----------------------------------------
     // --- data
@@ -437,21 +457,21 @@ public:
     {
         auto it = m_vector.begin();
         std::advance(it, index);
-        return m_vector.erase(it);
+        return Iterator(m_vector.erase(it));
     }
     Iterator erase(size_t index, size_t count) override 
     {
         auto it = m_vector.begin();
         std::advance(it, index);
-        return m_vector.erase(it, it+count);
+        return Iterator(m_vector.erase(it, it+count));
     }
     Iterator erase(ConstIterator pos) override 
     {
-        return m_vector.erase(pos);
+        return Iterator(m_vector.erase(pos));
     }
     Iterator erase(ConstIterator first, ConstIterator last) override 
     {
-        return m_vector.erase(first, last);
+        return Iterator(m_vector.erase(first, last));
     }
 
     template<class... Args>

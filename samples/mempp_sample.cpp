@@ -20,12 +20,16 @@ int main()
     it++;
     it++;
     it++;
-    vec.erase(it);
+    it++;
+    auto it2 = it;
+    it2++;
+    it2++;
+    vec.erase(it, it2);
 
-    // for (auto& e : vec) {
-    //     std::cout << e << " ";
-    // }
-    // std::cout << std::endl;
+    for (auto& e : vec) {
+        std::cout << e << " ";
+    }
+    std::cout << std::endl;
 
     return 0;
 }
