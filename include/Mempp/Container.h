@@ -177,22 +177,14 @@ public:
     }
 
     AnyIterator& operator++()
-    requires 
-        std::same_as<iterator_category, std::forward_iterator_tag> ||
-        std::same_as<iterator_category, std::bidirectional_iterator_tag> ||
-        std::same_as<iterator_category, std::random_access_iterator_tag> ||
-        std::same_as<iterator_category, std::contiguous_iterator_tag>
+    requires std::is_convertible_v<iterator_category, std::forward_iterator_tag>
     {
         m_self.get()->increment();
         return *this;
     }
 
     AnyIterator operator++(int) 
-    requires 
-        std::same_as<iterator_category, std::forward_iterator_tag> ||
-        std::same_as<iterator_category, std::bidirectional_iterator_tag> ||
-        std::same_as<iterator_category, std::random_access_iterator_tag> ||
-        std::same_as<iterator_category, std::contiguous_iterator_tag>
+    requires std::is_convertible_v<iterator_category, std::forward_iterator_tag>
     {
         AnyIterator tmp = *this;
         m_self.get()->increment();
@@ -200,20 +192,14 @@ public:
     }
 
     AnyIterator& operator--() 
-    requires
-        std::same_as<iterator_category, std::bidirectional_iterator_tag> ||
-        std::same_as<iterator_category, std::random_access_iterator_tag> ||
-        std::same_as<iterator_category, std::contiguous_iterator_tag>
+    requires std::is_convertible_v<iterator_category, std::bidirectional_iterator_tag>
     {
         m_self.get()->decrement();
         return *this;
     }
 
     AnyIterator operator--(int) 
-    requires
-        std::same_as<iterator_category, std::bidirectional_iterator_tag> ||
-        std::same_as<iterator_category, std::random_access_iterator_tag> ||
-        std::same_as<iterator_category, std::contiguous_iterator_tag>
+    requires std::is_convertible_v<iterator_category, std::bidirectional_iterator_tag>
     {
         AnyIterator tmp = *this;
         m_self.get()->decrement();
@@ -221,36 +207,28 @@ public:
     }
 
     AnyIterator operator+(size_t n)
-    requires
-        std::same_as<iterator_category, std::random_access_iterator_tag> ||
-        std::same_as<iterator_category, std::contiguous_iterator_tag>
+    requires std::is_convertible_v<iterator_category, std::random_access_iterator_tag>
     {
         m_self.get()->increment(n);
         return *this;
     }
 
     AnyIterator& operator+=(size_t n)
-    requires
-        std::same_as<iterator_category, std::random_access_iterator_tag> ||
-        std::same_as<iterator_category, std::contiguous_iterator_tag>
+    requires std::is_convertible_v<iterator_category, std::random_access_iterator_tag>
     {
         m_self.get()->increment(n);
         return *this;
     }
 
     AnyIterator operator-(size_t n)
-    requires
-        std::same_as<iterator_category, std::random_access_iterator_tag> ||
-        std::same_as<iterator_category, std::contiguous_iterator_tag>
+    requires std::is_convertible_v<iterator_category, std::random_access_iterator_tag>
     {
         m_self.get()->decrement(n);
         return *this;
     }
 
     AnyIterator& operator-=(size_t n)
-    requires
-        std::same_as<iterator_category, std::random_access_iterator_tag> ||
-        std::same_as<iterator_category, std::contiguous_iterator_tag>
+    requires std::is_convertible_v<iterator_category, std::random_access_iterator_tag>
     {
         m_self.get()->decrement(n);
         return *this;
@@ -373,7 +351,7 @@ public:
     // ----------------------------------------
     // --- constructors/destructors
     // ----------------------------------------
-    ~IIterable() = default;
+    virtual ~IIterable() = default;
 
     // ----------------------------------------
     // --- iterators
@@ -409,7 +387,7 @@ public:
     // ----------------------------------------
     // --- constructors/destructors
     // ----------------------------------------
-    ~IContigousContainer() = default;
+    virtual ~IContigousContainer() = default;
 
     // ----------------------------------------
     // --- data access
@@ -438,7 +416,7 @@ public:
     // ----------------------------------------
     // --- constructors/destructors
     // ----------------------------------------
-    ~IAssociativeContainer() = default;
+    virtual ~IAssociativeContainer() = default;
 
     // ----------------------------------------
     // --- data access
