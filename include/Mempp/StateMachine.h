@@ -4,6 +4,9 @@
 
 #include <magic_enum/magic_enum.hpp>
 #include <reflect>
+#include <optional>
+#include <deque>
+#include <mutex>
 
 class IState
 {
@@ -57,8 +60,8 @@ concept StatesTuple = is_base_of_all_v<IState, T>;
 template <typename T>
 concept StateTransitionsTuple = is_tuple_v<T>;
 
-template<auto From, auto Trigger, auto To>
-requires EnumClass<decltype(From)> && EnumClass<decltype(Trigger)> && EnumClass<decltype(To)>
+template<auto From, auto Trigger, auto To, auto Action = std::nullopt>
+requires EnumClass<decltype(From)> && EnumClass<decltype(Trigger)> && EnumClass<decltype(To)> && OptionallyInvocable<decltype(Action)>
 struct StateTransition;
 
 template<typename... T>
@@ -94,40 +97,57 @@ class StateMachine
 
     static_assert(ValidateNames(std::make_index_sequence<NumStatesDef>{}), "Invalid Names of State Definitions and Implementations");
 
-    // template<typename Transition>
-    // struct TransitionChecker;
+    template<typename Transition>
+    struct TransitionChecker;
 
-    // template<auto From, auto Trigger, auto To>
-    // struct TransitionChecker<StateTransition<From, Trigger, To>>
-    // {
-    //     static constexpr bool valid =
-    //         std::is_same_v<decltype(From), StateDefs> &&
-    //         std::is_same_v<decltype(To), StateDefs> &&
-    //         std::is_same_v<decltype(Trigger), StateEvents> &&
-    //         magic_enum::enum_contains(From) &&
-    //         magic_enum::enum_contains(To) &&
-    //         magic_enum::enum_contains(Trigger);
-    // };
+    template<auto From, auto Trigger, auto To, auto Action>
+    struct TransitionChecker<StateTransition<From, Trigger, To, Action>>
+    {
+        static constexpr bool is_valid =
+            std::is_same_v<decltype(From), StateDefs> &&
+            std::is_same_v<decltype(To), StateDefs> &&
+            std::is_same_v<decltype(Trigger), StateEvents> &&
+            magic_enum::enum_contains(From) &&
+            magic_enum::enum_contains(To) &&
+            magic_enum::enum_contains(Trigger);
+    };
 
-    // template <size_t... I>
-    // static constexpr bool ValidateTransitions(std::index_sequence<I...>)
-    // {
-    //     return (TransitionChecker<std::tuple_element_t<I, Transitions>>::valid && ...);
-    // }
+    template <size_t... I>
+    static constexpr bool ValidateTransitions(std::index_sequence<I...>)
+    {
+        if constexpr (sizeof...(I) > 0)
+        {
+            return (TransitionChecker<std::tuple_element_t<I, Transitions>>::is_valid && ...);
+        }
+        return true;
+    }
 
-    // static_assert(ValidateTransitions(std::make_index_sequence<NumStatesDef>{}), "Invalid State Transition");
+    static_assert(ValidateTransitions(std::make_index_sequence<std::tuple_size_v<Transitions>>{}), 
+        "Invalid state transition found. A transition must use the StateMachine's StateDefs for From and To, and StateEvents for the Trigger, and the values must be valid enumerators.");
 
 public:
-    constexpr StateMachine()
+    StateMachine()
     {
         m_prevState = m_state = DefaultStateDef;
         m_stateImpl.template construct<DefToImpl<DefaultStateDef>>();
+        m_stateImpl.get()->onEntry();
     }
     ~StateMachine() = default;
 
+    void sendEvent(StateEvents event)
+    {
+        m_eventQueue.push_back(event);
+    }
+
     void update()
     {
+        while (!m_eventQueue.empty()) {
+            auto event = m_eventQueue.front();
+            m_eventQueue.pop_front();
+            processEvent(event);
+        }
 
+        m_stateImpl.get()->onActive();
     }
 
     constexpr auto prevState() const { return m_prevState; }
@@ -164,6 +184,44 @@ private:
         return static_cast<StateDefs>(DefIndex<Impl, StateImpls>::value);
     }
 
+    template<typename T> struct transition_traits;
+    template<auto F, auto Trig, auto T, auto A>
+    struct transition_traits<StateTransition<F, Trig, T, A>> {
+        static constexpr auto From = F;
+        static constexpr auto Trigger = Trig;
+        static constexpr auto To = T;
+        static constexpr auto Action = A;
+    };
+
+    template<size_t I = 0>
+    void processEvent(StateEvents event) {
+        if constexpr (I < std::tuple_size_v<Transitions>) {
+            using Traits = transition_traits<std::tuple_element_t<I, Transitions>>;            
+            if (m_state == Traits::From && event == Traits::Trigger) {
+                m_stateImpl.get()->onExit();
+                m_stateImpl.destroy();
+
+                if constexpr (!std::is_same_v<std::decay_t<decltype(Traits::Action)>, std::nullopt_t>) {
+                    if constexpr (is_optional_v<decltype(Traits::Action)>) {
+                        if (Traits::Action) {
+                            (*Traits::Action)();
+                        }
+                    } else {
+                        Traits::Action();
+                    }
+                }
+                
+                m_prevState = m_state;
+                m_state = Traits::To;
+                
+                m_stateImpl.template construct<DefToImpl<Traits::To>>();
+                m_stateImpl.get()->onEntry();
+            } else {
+                processEvent<I + 1>(event);
+            }
+        }
+    }
+
     StateDefs m_prevState;
     StateDefs m_state;
     std::conditional_t<
@@ -171,4 +229,5 @@ private:
         StaticPolymorphic<IState, StateImpls>, 
         DynamicPolymorphic<IState>
     > m_stateImpl;
+    std::deque<StateEvents> m_eventQueue;
 };
