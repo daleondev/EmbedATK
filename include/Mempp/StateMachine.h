@@ -22,7 +22,31 @@ template <typename... T>
 struct is_tuple<std::tuple<T...>> : std::true_type {};
 
 template <typename T>
-inline constexpr bool is_tuple_v = is_tuple<T>::value;
+inline constexpr bool is_tuple_v = is_tuple<std::remove_cvref_t<T>>::value;
+
+template <typename T>
+struct is_optional : std::false_type {};
+
+template <typename F>
+struct is_optional<std::optional<F>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_optional_v = is_optional<std::remove_cvref_t<T>>::value;
+
+template <typename T>
+struct optional_inner_type { using type = T; };
+
+template <typename F>
+struct optional_inner_type<std::optional<F>> { using type = F; };
+
+template <typename T>
+using optional_inner_type_t = typename optional_inner_type<std::remove_cvref_t<T>>::type;
+
+template <typename T, typename... Args>
+concept OptionallyInvocable = 
+    std::invocable<T, Args...> ||
+    std::same_as<std::remove_cvref_t<T>, std::nullopt_t> ||
+    (is_optional_v<T> && std::invocable<optional_inner_type_t<T>, Args...>);
 
 template <typename T>
 concept EnumClass = std::is_enum_v<T> && !std::is_convertible_v<T, int>;
@@ -70,6 +94,29 @@ class StateMachine
 
     static_assert(ValidateNames(std::make_index_sequence<NumStatesDef>{}), "Invalid Names of State Definitions and Implementations");
 
+    // template<typename Transition>
+    // struct TransitionChecker;
+
+    // template<auto From, auto Trigger, auto To>
+    // struct TransitionChecker<StateTransition<From, Trigger, To>>
+    // {
+    //     static constexpr bool valid =
+    //         std::is_same_v<decltype(From), StateDefs> &&
+    //         std::is_same_v<decltype(To), StateDefs> &&
+    //         std::is_same_v<decltype(Trigger), StateEvents> &&
+    //         magic_enum::enum_contains(From) &&
+    //         magic_enum::enum_contains(To) &&
+    //         magic_enum::enum_contains(Trigger);
+    // };
+
+    // template <size_t... I>
+    // static constexpr bool ValidateTransitions(std::index_sequence<I...>)
+    // {
+    //     return (TransitionChecker<std::tuple_element_t<I, Transitions>>::valid && ...);
+    // }
+
+    // static_assert(ValidateTransitions(std::make_index_sequence<NumStatesDef>{}), "Invalid State Transition");
+
 public:
     constexpr StateMachine()
     {
@@ -77,6 +124,11 @@ public:
         m_stateImpl.template construct<DefToImpl<DefaultStateDef>>();
     }
     ~StateMachine() = default;
+
+    void update()
+    {
+
+    }
 
     constexpr auto prevState() const { return m_prevState; }
     constexpr auto currentState() const { return m_state; }

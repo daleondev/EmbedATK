@@ -18,8 +18,14 @@ public:
     virtual void onExit() override {}
 };
 
+void cb()
+{
+
+}
+
 int main()
 {
+    constexpr auto myLambda = []() {  };
     enum class Defs { Idle, Active };
     enum class Events { Btn1, Btn2, Btn3 };
     using Impls = States<Idle, Active>;
@@ -28,7 +34,7 @@ int main()
         StateTransition<Defs::Active, Events::Btn2, Defs::Idle>
     >;
 
-    StateMachine<Defs, Impls, Events, Transitions> statemachine;
+    // StateMachine<Defs, Impls, Events, Transitions> statemachine;
 
     
 
