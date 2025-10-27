@@ -5,6 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/include",
+                "${workspaceFolder}/external/magic_enum/include",
+                "${workspaceFolder}/external/reflect",
                 "${workspaceFolder}/build/_deps/gtest-src/googletest/include",
                 "${workspaceFolder}/build/_deps/gtest-src/googlemock/include"
             ],
@@ -18,6 +20,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/include",
+                "${workspaceFolder}/external/magic_enum/include",
+                "${workspaceFolder}/external/reflect",
                 "/home/david/development/llvm-install/include/c++/v1",
                 "${workspaceFolder}/build/_deps/gtest-src/googletest/include",
                 "${workspaceFolder}/build/_deps/gtest-src/googlemock/include"

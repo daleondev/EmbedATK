@@ -104,6 +104,10 @@
         "core": "cpp",
         "lu": "cpp",
         "__target_macros": "cpp",
-        "target": "cpp"
+        "target": "cpp",
+        "__functional_base": "cpp",
+        "__node_handle": "cpp",
+        "__memory": "cpp",
+        "reflect": "cpp"
     }
 }

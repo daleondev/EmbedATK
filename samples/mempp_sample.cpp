@@ -2,34 +2,35 @@
 
 #include <iostream>
 
+class Idle : public IState
+{
+public:
+    virtual void onEntry() override {}
+    virtual void onActive() override {}
+    virtual void onExit() override {}
+};
+
+class Active : public IState
+{
+public:
+    virtual void onEntry() override {}
+    virtual void onActive() override {}
+    virtual void onExit() override {}
+};
+
 int main()
 {
-    std::cout << "Hello World!\n";
+    enum class Defs { Idle, Active };
+    enum class Events { Btn1, Btn2, Btn3 };
+    using Impls = States<Idle, Active>;
+    using Transitions = StateTransitions<
+        StateTransition<Defs::Idle, Events::Btn1, Defs::Active>,
+        StateTransition<Defs::Active, Events::Btn2, Defs::Idle>
+    >;
 
-    StaticVector<int, 20> vec(3, 1);
-    for (int i = 0; i < 10; ++i) {
-        vec.emplace_back(i);
-    }
+    StateMachine<Defs, Impls, Events, Transitions> statemachine;
 
-    for (auto& e : vec) {
-        std::cout << e << " ";
-    }
-    std::cout << std::endl;
-
-    auto it = vec.begin();
-    it++;
-    it++;
-    it++;
-    it++;
-    auto it2 = it;
-    it2++;
-    it2++;
-    vec.erase(it, it2);
-
-    for (auto& e : vec) {
-        std::cout << e << " ";
-    }
-    std::cout << std::endl;
+    
 
     return 0;
 }

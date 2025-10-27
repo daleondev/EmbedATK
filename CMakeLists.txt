@@ -6,6 +6,11 @@ project(Mempp
     LANGUAGES CXX
 )
 
+# --- External Libraries ---
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/magic_enum
+)
+
 # --- Library Target Definition ---
 add_library(Mempp INTERFACE)
 add_library(Mempp::Mempp ALIAS Mempp)
@@ -14,6 +19,13 @@ add_library(Mempp::Mempp ALIAS Mempp)
 target_include_directories(Mempp
     INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/reflect>
+)
+
+# --- Link Libraries ---
+target_link_libraries(Mempp
+    INTERFACE
+        magic_enum::magic_enum
 )
 
 # --- Compile Features ---
