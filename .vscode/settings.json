@@ -108,6 +108,7 @@
         "__functional_base": "cpp",
         "__node_handle": "cpp",
         "__memory": "cpp",
-        "reflect": "cpp"
+        "reflect": "cpp",
+        "*.md": "cpp"
     }
 }

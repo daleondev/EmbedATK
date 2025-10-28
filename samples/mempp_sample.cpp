@@ -25,7 +25,7 @@ void cb()
 
 int main()
 {
-    // constexpr auto myLambda = []() {  };
+    // constexpr auto myLambda = [](int i) {  };
     // std::optional<decltype(myLambda)> emptyOpt = std::nullopt;
 
     enum class Defs { Idle, Active };
@@ -36,7 +36,7 @@ int main()
         StateTransition<Defs::Active, Events::Btn2, Defs::Idle, []() { std::cout << "transition 2" << std::endl; }>
     >;
 
-    StateMachine<Defs, Impls, Events, Transitions> statemachine;
+    StateMachine<Defs, Impls, Events, Transitions, Defs::Idle, false> statemachine;
 
     size_t i = 0;
     while(true) {
