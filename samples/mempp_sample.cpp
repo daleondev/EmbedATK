@@ -27,7 +27,7 @@ int main()
 {
     enum class Defs { Idle, Active };
     enum class Events { Btn1, Btn2, Btn3 };
-    using Impls = States<Idle, Active>;
+    using Impls = std::tuple<Idle, Active>;
 
     constexpr auto traceTransition = [](Defs from, Events trig, Defs to) 
     { 
@@ -35,12 +35,12 @@ int main()
         std::cout << " to: " << magic_enum::enum_name(to);
         std::cout << ", trigger: " << magic_enum::enum_name(trig) << std::endl;
     };
-    using Transitions = StateTransitions<
+    using Transitions = std::tuple<
         StateTransition<Defs::Idle, Events::Btn1, Defs::Active, traceTransition>,
         StateTransition<Defs::Active, Events::Btn2, Defs::Idle, traceTransition>
     >;
 
-    StateMachine<Defs, Impls, Events, Transitions, Defs::Idle, false> statemachine;
+    StateMachine<Defs, Impls, Events, Transitions, std::tuple<>, Defs::Idle> statemachine;
 
     size_t i = 0;
     while(true) {
