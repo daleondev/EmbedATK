@@ -2,7 +2,6 @@
 
 #include "Polymorphic.h"
 
-#include <magic_enum/magic_enum.hpp>
 #include <reflect>
 #include <optional>
 #include <deque>
@@ -18,50 +17,11 @@ public:
     virtual void onExit() = 0;
 };
 
-template <typename T>
-struct is_tuple : std::false_type {};
-
-template <typename... T>
-struct is_tuple<std::tuple<T...>> : std::true_type {};
-
-template <typename T>
-inline constexpr bool is_tuple_v = is_tuple<std::remove_cvref_t<T>>::value;
-
-template <typename T>
-struct is_optional : std::false_type {};
-
-template <typename T>
-struct is_optional<std::optional<T>> : std::true_type {};
-
-template <typename T>
-inline constexpr bool is_optional_v = is_optional<std::remove_cvref_t<T>>::value;
-
-template <typename T>
-struct optional_inner_type { using type = T; };
-
-template <typename T>
-struct optional_inner_type<std::optional<T>> { using type = T; };
-
-template <typename T>
-using optional_inner_type_t = typename optional_inner_type<std::remove_cvref_t<T>>::type;
-
-template <typename T, typename... Args>
-concept OptionallyInvocable = 
-    std::invocable<T, Args...> ||
-    std::same_as<std::remove_cvref_t<T>, std::nullopt_t> ||
-    (is_optional_v<T> && std::invocable<optional_inner_type_t<T>, Args...>);
-
-template <typename T>
-concept EnumClass = magic_enum::is_scoped_enum_v<T>;
-
-template <typename T>
-concept StatesTuple = is_base_of_all_v<IState, T>;
-
-template <typename T>
-concept StateTransitionsTuple = is_tuple_v<T>;
-
 template<auto From, auto Trig, auto To, auto Action = std::nullopt>
-requires EnumClass<decltype(From)> && EnumClass<decltype(Trig)> && EnumClass<decltype(To)> && OptionallyInvocable<decltype(Action)>
+requires 
+    std::is_same_v<decltype(From), decltype(To)> &&
+    IsEnumClass<decltype(From)> && IsEnumClass<decltype(Trig)> && IsEnumClass<decltype(To)> && 
+    IsOptionallyInvocable<decltype(Action), decltype(From), decltype(Trig), decltype(To)>
 struct StateTransition
 {
     static constexpr auto from      = From;
@@ -76,7 +36,7 @@ using StateTransitions = std::tuple<T...>;
 template<typename... T>
 using States = std::tuple<T...>;
 
-template <EnumClass StateDefs, StatesTuple StateImpls, EnumClass StateEvents, StateTransitionsTuple Transitions, StateDefs DefaultStateDef = static_cast<StateDefs>(0), bool IsStatic = true>
+template <IsEnumClass StateDefs, IsBaseOfAll<IState> StateImpls, IsEnumClass StateEvents, IsTuple Transitions, StateDefs DefaultStateDef = static_cast<StateDefs>(0), bool IsStatic = true>
 class StateMachine
 {
     inline static constexpr size_t NumStatesDef = magic_enum::enum_values<StateDefs>().size();
@@ -152,10 +112,10 @@ private:
                 if constexpr (!std::is_same_v<std::decay_t<decltype(Transition::action)>, std::nullopt_t>) {
                     if constexpr (is_optional_v<decltype(Transition::action)>) {
                         if (Transition::action) {
-                            (*Transition::action)();
+                            (*Transition::action)(Transition::from, Transition::trig, Transition::to);
                         }
                     } else {
-                        Transition::action();
+                        Transition::action(Transition::from, Transition::trig, Transition::to);
                     }
                 }
                 
@@ -164,7 +124,8 @@ private:
 
                 m_stateImpl.template construct<DefToImpl<Transition::to>>();
                 m_stateImpl.get()->onEntry();
-            } else {
+            }
+            else {
                 ProcessEvent<I + 1>(event); // compile time loop
             }
         }

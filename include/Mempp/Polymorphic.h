@@ -1,8 +1,7 @@
 #pragma once
 
 #include "Memory.h"
-
-// #include <type_traits>
+#include "Concepts.h"
 
 //------------------------------------------------------
 //                   Polymorphic
@@ -32,12 +31,10 @@ public:
     virtual Base* get() = 0;
     virtual const Base* get() const = 0;
 
-    template<class Derived>
-    requires std::is_base_of_v<Base, Derived>
+    template<IsBaseOf<Base> Derived>
     Derived* as() { return static_cast<Derived*>(get()); }
 
-    template<class Derived>
-    requires std::is_base_of_v<Base, Derived>
+    template<IsBaseOf<Base> Derived>
     const Derived* as() const { return static_cast<const Derived*>(get()); }
 
     template<class Derived>
@@ -63,8 +60,7 @@ public:
     // ----------------------------------------
     virtual void set(Base* data) = 0;
 
-    template<typename Derived, typename... Args>
-    requires std::is_base_of_v<Base, Derived>
+    template<IsBaseOf<Base> Derived, typename... Args>
     void construct(Args&&... args)
     {
         if (m_isStatic && get()) {
@@ -81,15 +77,13 @@ public:
         m_type = &typeid(Derived);
     }
 
-    template<typename Derived>
-    requires std::is_base_of_v<Base, Derived>
+    template<IsBaseOf<Base> Derived>
     void clone(const Derived& source)
     {
         construct<Derived>(source);
     }
 
-    template<typename Derived>
-    requires std::is_base_of_v<Base, Derived>
+    template<IsBaseOf<Base> Derived>
     void transfer(Derived&& source)
     {
         construct<Derived>(std::move(source));
@@ -159,8 +153,7 @@ public:
         }
     }
 
-    template<typename Derived>
-    requires std::is_base_of_v<Base, Derived>
+    template<IsBaseOf<Base> Derived>
     StaticPolymorphicStore(const Derived& other) // converting constructor instead of copy constructor
         : Handle(true)
     {
@@ -210,8 +203,7 @@ public:
         return *this;
     }
 
-    template<typename Derived>
-    requires std::is_base_of_v<Base, Derived>
+    template<IsBaseOf<Base> Derived>
     StaticPolymorphicStore& operator=(const Derived& other) // converting assignment instead of copy assignment
     {
         if (this != &other) {
@@ -242,20 +234,7 @@ private:
     bool m_isValid = true;
 };
 
-template <typename Base, typename T>
-struct is_base_of_all : std::false_type {};
-
-template <typename Base, typename... DerivedTypes>
-struct is_base_of_all<Base, std::tuple<DerivedTypes...>>
-{
-    static constexpr bool value = (std::is_base_of_v<Base, DerivedTypes> && ...);
-};
-
-template <typename Base, typename T>
-inline constexpr bool is_base_of_all_v = is_base_of_all<Base, T>::value;
-
-template<typename Base, typename DerivedTypes>
-requires is_base_of_all_v<Base, DerivedTypes>
+template<typename Base, IsBaseOfAll<Base> DerivedTypes>
 using StaticPolymorphic = StaticPolymorphicStore<Base, MaxAllocData<DerivedTypes>::data>;
 
 //------------------------------------------------------
