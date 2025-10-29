@@ -80,39 +80,44 @@
 // ------------------------------------------------------
 
 // Base class which concrete states must inherit from
-template<IsEnumClass StateIds>
+template<IsEnumClass StateId>
 class IState
 {
 public:
     virtual ~IState() = default;
     
     virtual void onEntry() = 0;
-    virtual void onActive(StateIds* substates = nullptr, size_t numSubstates = 0) = 0;
+    virtual void onActive(StateId* substates = nullptr, size_t numSubstates = 0) = 0;
     virtual void onExit() = 0;
 };
 
 // State definition (consists of enum class value and implementation class with matching names)
 template<auto StateId, IsBaseOf<IState<decltype(StateId)>> StateImpl>
-requires IsEnumClass<decltype(StateId)>
+requires 
+    IsEnumClass<decltype(StateId)> &&
+    (magic_enum::enum_name(StateId) == reflect::type_name<StateImpl>())
 struct State
 {
-    static constexpr auto ID = StateId;
-    using Impl = StateImpl;
+    using IdType                = decltype(StateId);
+    static constexpr IdType ID  = StateId;
+    StateImpl impl;
 };
 
 // concept to force a valid State definition
 template<typename T>
 concept IsState = requires {
     typename T;
+    typename T::IdType;
     { T::ID };
-    typename T::Impl;
+    { T::impl };
 } && 
-IsEnumClass<decltype(T::ID)> && IsBaseOf<typename T::Impl, IState<std::remove_const_t<decltype(T::ID)>>> &&
-magic_enum::enum_name(T::ID) == reflect::type_name<typename T::Impl>();
+IsEnumClass<typename T::IdType> && IsBaseOf<decltype(T::impl), IState<std::remove_const_t<typename T::IdType>>> &&
+magic_enum::enum_name(T::ID) == reflect::type_name<decltype(T::impl)>();
 
 // For defining all States of a State Machine
-template<IsState... S>
-using States = std::tuple<S...>;
+template<IsState DefaultState, IsState... OtherStates>
+requires (std::is_same_v<decltype(DefaultState::ID), decltype(OtherStates::ID)> && ...)
+using States = std::tuple<DefaultState, OtherStates...>;
 
 // ------------------------------------------------------
 //                     State Transitions
@@ -125,9 +130,9 @@ requires
     IsOptionallyInvocable<decltype(Action), decltype(From::ID), decltype(Trig), decltype(To::ID)>
 struct StateTransition
 {
-    static constexpr auto FROM      = From::ID;
+    using OldState                  = From;
+    using NewState                  = To;
     static constexpr auto TRIG      = Trig;
-    static constexpr auto TO        = To::ID;
     static constexpr auto ACTION    = Action;
 };
 
@@ -135,225 +140,242 @@ struct StateTransition
 template<typename T>
 concept IsStateTransition = requires {
     typename T;
-    { T::FROM };
+    typename T::OldState;
+    typename T::NewState;
     { T::TRIG };
-    { T::TO };
     { T::ACTION };
-} && T::FROM != T::TO &&
-IsEnumClass<decltype(T::FROM)> && IsEnumClass<decltype(T::FROM)> && IsEnumClass<decltype(T::TRIG)> &&
-IsOptionallyInvocable<decltype(T::ACTION), decltype(T::FROM), decltype(T::TRIG), decltype(T::FROM)>;
+} && 
+(
+    IsState<typename T::OldState> && IsEnumClass<decltype(T::TRIG)> && IsState<typename T::NewState> &&
+    IsOptionallyInvocable<decltype(T::ACTION), decltype(T::OldState::ID), decltype(T::TRIG), decltype(T::NewState::ID)> &&
+    !std::is_same_v<typename T::OldState, typename T::NewState> &&
+    std::is_same_v<decltype(T::OldState::ID), decltype(T::NewState::ID)>
+);
 
 // For defining all Transitions of a State Machine
-template<IsStateTransition... Transitions>
-using StateTransitions = std::tuple<Transitions...>;
+template<IsStateTransition FirstTransition, IsStateTransition... OtherTransitions>
+requires (std::is_same_v<decltype(FirstTransition::OldState::ID), decltype(OtherTransitions::OldState::ID)> && ...)
+using StateTransitions = std::tuple<FirstTransition, OtherTransitions...>;
 
 // ------------------------------------------------------
-//                     State Groups
+//                     SubState Groups
 // ------------------------------------------------------
 
 // Substate-Group for defining hierarchical States
 template<IsState Parent, IsState DefaultChild, IsState... Children>
+requires 
+    (!std::is_same_v<Parent, DefaultChild>) && 
+    ((!std::is_same_v<Parent, Children> && !std::is_same_v<DefaultChild, Children>) && ...)
 struct SubstateGroup 
 {
-    static constexpr auto PARENT_STATE = Parent::ID;
-    static constexpr auto DEFAULT_CHILD_STATE = DefaultChild::ID;
-    using ChildStates = std::tuple<std::integral_constant<decltype(DefaultChild::ID), DefaultChild::ID>, std::integral_constant<decltype(Children::ID), Children::ID>...>;
+    using ParentState       = Parent;
+    using DefaultChildState = DefaultChild;
+    using ChildStates       = std::tuple<DefaultChild, Children...>;
 };
+
+// concept to force a valid substate group
+template<typename T>
+concept IsSubstateGroup = requires {
+    typename T;
+    typename T::ParentState;
+    typename T::DefaultChildState;
+    typename T::ChildStates;
+} && 
+(
+    IsState<typename T::ParentState> && IsState<typename T::DefaultChildState> &&
+    !std::is_same_v<typename T::ParentState, typename T::DefaultChildState> &&
+    std::is_same_v<decltype(T::ParentState::ID), decltype(T::DefaultChildState::ID)>
+) &&
+(
+    std::tuple_size_v<typename T::ChildStates>() == 0 ||
+    (
+        IsState<std::tuple_element_t<0, typename T::ChildStates>> &&
+        !std::is_same_v<typename T::ParentState, std::tuple_element_t<0, typename T::ChildStates>> &&
+        !std::is_same_v<typename T::DefaultChildState, std::tuple_element_t<0, typename T::ChildStates>> &&
+        std::is_same_v<decltype(T::ParentState::ID), decltype(std::tuple_element_t<0, typename T::ChildStates>::ID)> &&
+        std::is_same_v<decltype(T::DefaultChildState::ID), decltype(std::tuple_element_t<0, typename T::ChildStates>::ID)>
+    )
+);
+
+// For defining hierarchy substate groups of a State Machine
+template<IsSubstateGroup... Groups>
+using StateHierarchy = std::tuple<Groups...>;
+
+// ------------------------------------------------------
+//                     State Machine
+// ------------------------------------------------------
 
 template <
     IsTuple States,
     IsEnumClass Events,
     IsTuple Transitions,
-    IsState DefaultState = std::tuple_element_t<0, States>
+    IsTuple Hierarchy = StateHierarchy<>,
+    size_t MaxDepth = 8
 >
 class StateMachine
 {
     inline static constexpr size_t  NUM_STATES      = std::tuple_size_v<States>;
     inline static constexpr size_t  NUM_EVENTS      = magic_enum::enum_values<Events>().size();
     inline static constexpr size_t  NUM_TRANSITIONS = std::tuple_size_v<Transitions>;
-    // inline static constexpr bool    IS_HIERARCHICAL = std::tuple_size_v<Hierarchy> > 0;
-};
+    inline static constexpr bool    IS_HIERARCHICAL = std::tuple_size_v<Hierarchy> > 0;
 
-// template<IsState DefaultState, IsState... OtherStates>
-// struct States 
-// {
-//     static constexpr auto DEFAULT_ID = DefaultState::ID;
+    static_assert(NUM_STATES > 0);
+    static_assert(NUM_EVENTS > 0);
+    static_assert(NUM_TRANSITIONS > 0);
 
-//     using Id = decltype(DefaultState::ID);
-// };
+    using StateId = std::tuple_element_t<0, States>::IdType;
 
-// using States = std::tuple<DefaultState::Impl, OtherStates::Impl...>;
+public:
+    StateMachine()
+    {
+        auto defaultState = std::tuple_element_t<0, States>::ID;
+        m_activeStatePath.push_back(defaultState);
 
-// template<auto Parent, auto DefaultChild, auto... Children>
-// struct SubstateGroup 
-// {
-//     static constexpr auto parent = Parent;
-//     static constexpr auto defaultChild = DefaultChild;
-//     using children = std::tuple<std::integral_constant<decltype(DefaultChild), DefaultChild>, std::integral_constant<decltype(Children), Children>...>;
-// };
-
-
-
-// // template<typename... T>
-// // using States = std::tuple<T...>;
-
-// template <
-//     IsEnumClass StateNames,
-//     IsBaseOfAll<IState> States,
-//     IsEnumClass StateEvents,
-//     IsTuple Transitions,
-//     IsTuple Hierarchy = std::tuple<>,
-//     StateNames DefaultStateName = static_cast<StateNames>(0),
-//     size_t MaxDepth = 8
-// >
-// class StateMachine
-// {
-//     inline static constexpr size_t  NUM_STATE_NAMES = magic_enum::enum_values<StateNames>().size();
-//     inline static constexpr size_t  NUM_STATES      = std::tuple_size_v<States>;
-//     inline static constexpr size_t  NUM_TRANSITIONS = std::tuple_size_v<Transitions>;
-//     inline static constexpr bool    IS_HIERARCHICAL = std::tuple_size_v<Hierarchy> > 0;
-
-// public:
-//     StateMachine()
-//     {
-//         m_activeStatePath.emplace_back(DefaultStateName);
-
-//         if constexpr (IS_HIERARCHICAL) {
-//             auto current = DefaultStateName;
-//             while(true) {
-//                 constexpr auto child = detail::template get_default_child<current, Hierarchy>();
-//                 if constexpr (child == StateNames{}) {
-//                     break;
-//                 } 
-//                 else {
-//                     m_activeStatePath.push_back(child);
-//                     current = child;
-//                 }
-//             }
-//         }
+        // if constexpr (IS_HIERARCHICAL) {
+        //     auto current = defaultState;
+        //     while(true) {
+        //         constexpr auto child = detail::template get_default_child<current, Hierarchy>();
+        //         if constexpr (child == StateId{}) {
+        //             break;
+        //         } 
+        //         else {
+        //             m_activeStatePath.push_back(child);
+        //             current = child;
+        //         }
+        //     }
+        // }
         
-//         for(size_t i = 0; i < m_activeStatePath.size(); ++i) {
-//             callOnEntry(m_activeStatePath[i]);
-//         }
-//     }
+        for(size_t i = 0; i < m_activeStatePath.size(); ++i) {
+            callOnEntry(m_activeStatePath[i]);
+        }
+    }
 
-//     ~StateMachine()
-//     {
-//         for(size_t i = m_activeStatePath.size(); i > 0; --i) {
-//             callOnExit(m_activeStatePath[i-1]);
-//         }
-//     }
+    ~StateMachine()
+    {
+        for(size_t i = m_activeStatePath.size(); i > 0; --i) {
+            callOnExit(m_activeStatePath[i-1]);
+        }
+    }
 
-//     void sendEvent(StateEvents event)
-//     {
-//         m_eventQueue.push_back(event);
-//     }
+    void sendEvent(Events event)
+    {
+        m_eventQueue.push_back(event);
+    }
 
-//     void update()
-//     {
-//         while (!m_eventQueue.empty()) {
-//             auto event = m_eventQueue.front();
-//             m_eventQueue.pop_front();
-//             processEvent(event);
-//         }
+    void update()
+    {
+        while (!m_eventQueue.empty()) {
+            auto event = m_eventQueue.front();
+            m_eventQueue.pop_front();
+            processEvent(event);
+        }
 
-//         for(size_t i = 0; i < m_activeStatePath.size(); ++i) {
-//             callOnActive(m_activeStatePath[i]);
-//         }
-//     }
+        for(size_t i = 0; i < m_activeStatePath.size(); ++i) {
+            callOnActive(m_activeStatePath[i]);
+        }
+    }
 
-//     constexpr auto currentState() const { return m_activeStatePath[m_activeStatePath.size() - 1]; }
-//     const auto& currentStatePath() const { return m_activeStatePath; }
+    constexpr auto currentState() const { return m_activeStatePath[m_activeStatePath.size() - 1]; }
+    const auto& currentStatePath() const { return m_activeStatePath; }
 
-// private:
-//     // ------------------------------------------------------
-//     //                 Metaprogramming Helpers
-//     // ------------------------------------------------------
-//     struct detail {
-//         template<typename T, typename Tuple>
-//         struct has_type;
+private:
+    // ------------------------------------------------------
+    //                 Metaprogramming Helpers
+    // ------------------------------------------------------
+    struct detail {
+        template<typename T, typename Tuple>
+        struct has_type;
 
-//         template<typename T, typename... Us>
-//         struct has_type<T, std::tuple<Us...>> : std::disjunction<std::is_same<T, Us>...> {};
+        template<typename T, typename... Us>
+        struct has_type<T, std::tuple<Us...>> : std::disjunction<std::is_same<T, Us>...> {};
 
-//         template<auto S, typename T>
-//         struct get_parent_impl;
+        template<auto S, typename T>
+        struct get_parent_impl;
 
-//         template<auto S, typename... Gs>
-//         struct get_parent_impl<S, std::tuple<Gs...>> {
-//             static constexpr auto get() {
-//                 StateNames parent = StateNames{};
-//                 ([&]{
-//                     using ChildrenTuple = typename Gs::children;
-//                     if (has_type<std::integral_constant<StateNames, S>, ChildrenTuple>::value) {
-//                         parent = Gs::parent;
-//                     }
-//                 }(), ...);
-//                 return parent;
-//             }
-//             static constexpr StateNames value = get();
-//         };
+        template<auto S, typename... Gs>
+        struct get_parent_impl<S, std::tuple<Gs...>> {
+            static constexpr auto get() {
+                StateId parent = StateId{};
+                ([&]{
+                    using ChildrenTuple = typename Gs::children;
+                    if (has_type<std::integral_constant<StateId, S>, ChildrenTuple>::value) {
+                        parent = Gs::parent;
+                    }
+                }(), ...);
+                return parent;
+            }
+            static constexpr StateId value = get();
+        };
 
-//         template<auto S, typename H>
-//         static constexpr auto get_parent() {
-//             if constexpr (std::tuple_size_v<H> == 0) return StateNames{};
-//             else return get_parent_impl<S, H>::value;
-//         }
+        template<auto S, typename H>
+        static constexpr auto get_parent() {
+            if constexpr (std::tuple_size_v<H> == 0) return StateId{};
+            else return get_parent_impl<S, H>::value;
+        }
 
-//         template<auto S, typename T>
-//         struct get_default_child_impl;
+        template<auto S, typename T>
+        struct get_default_child_impl;
 
-//         template<auto S, typename... Gs>
-//         struct get_default_child_impl<S, std::tuple<Gs...>> {
-//             static constexpr auto get() {
-//                 StateNames child = StateNames{};
-//                 ([&]{
-//                     if (Gs::parent == S) {
-//                         child = Gs::default_child;
-//                     }
-//                 }(), ...);
-//                 return child;
-//             }
-//             static constexpr StateNames value = get();
-//         };
+        template<auto S, typename... Gs>
+        struct get_default_child_impl<S, std::tuple<Gs...>> {
+            static constexpr auto get() {
+                StateId child = StateId{};
+                ([&]{
+                    if (Gs::parent == S) {
+                        child = Gs::default_child;
+                    }
+                }(), ...);
+                return child;
+            }
+            static constexpr StateId value = get();
+        };
         
-//         template<auto S, typename H>
-//         static constexpr auto get_default_child() {
-//             if constexpr (std::tuple_size_v<H> == 0) return StateNames{};
-//             else return get_default_child_impl<S, H>::value;
-//         }
+        template<auto S, typename H>
+        static constexpr auto get_default_child() {
+            if constexpr (std::tuple_size_v<H> == 0) return StateId{};
+            else return get_default_child_impl<S, H>::value;
+        }
 
-//         template<auto S1, auto S2, typename H>
-//         static constexpr bool is_ancestor() {
-//             constexpr auto parent = get_parent<S2, H>();
-//             if constexpr (parent == StateNames{}) {
-//                 return false;
-//             } else if constexpr (parent == S1) {
-//                 return true;
-//             } else {
-//                 return is_ancestor<S1, parent, H>();
-//             }
-//         }
-//     };
+        template<auto S1, auto S2, typename H>
+        static constexpr bool is_ancestor() {
+            constexpr auto parent = get_parent<S2, H>();
+            if constexpr (parent == StateId{}) {
+                return false;
+            } else if constexpr (parent == S1) {
+                return true;
+            } else {
+                return is_ancestor<S1, parent, H>();
+            }
+        }
+    };
 
-//     // ------------------------------------------------------
-//     //                 State Implementation Helpers
-//     // ------------------------------------------------------
-//     template<StateNames Name>
-//     IState& nameToImpl() { return std::get<magic_enum::enum_index<Name>()>(m_stateInstances); }
+    // ------------------------------------------------------
+    //                 State Implementation Helpers
+    // ------------------------------------------------------
 
-//     void callOnEntry(StateNames name) 
-//     {
-//         magic_enum::enum_switch([this](auto n) { nameToImpl<n.value>().onEntry(); }, name);
-//     }
-//     void callOnExit(StateNames name) 
-//     {
-//         magic_enum::enum_switch([this](auto n) { nameToImpl<n.value>().onExit(); }, name);
-//     }
-//     void callOnActive(StateNames name) 
-//     {
-//         magic_enum::enum_switch([this](auto n) { nameToImpl<n.value>().onActive(); }, name);
-//     }
+    template<auto Id, size_t I = 0>
+    auto& stateImpl() {
+        if constexpr (I == NUM_STATES) {
+            static_assert(I != NUM_STATES, "State ID not found");
+        } else if constexpr (std::tuple_element_t<I, States>::ID == Id) {
+            return std::get<I>(m_states).impl;
+        } else {
+            return stateImpl<Id, I + 1>();
+        }
+    }
+
+    void callOnEntry(StateId state) 
+    {
+        magic_enum::enum_switch([this](auto s) { stateImpl<s.value>().onEntry(); }, state);
+    }
+    void callOnExit(StateId state) 
+    {
+        magic_enum::enum_switch([this](auto s) { stateImpl<s.value>().onExit(); }, state);
+    }
+    void callOnActive(StateId state) 
+    {
+        magic_enum::enum_switch([this](auto s) { stateImpl<s.value>().onActive(); }, state);
+    }
 
 //     // ------------------------------------------------------
 //     //                 Event & Transition Logic
@@ -371,7 +393,7 @@ class StateMachine
 //     }
 
 //     template<size_t I = 0>
-//     bool findAndExecuteTransition(StateNames state, StateEvents event) {
+//     bool findAndExecuteTransition(StateId state, StateEvents event) {
 //         if constexpr (I < NUM_TRANSITIONS) {
 //             using Transition = std::tuple_element_t<I, Transitions>;
 //             if (Transition::from == state && Transition::trig == event) {
@@ -388,12 +410,12 @@ class StateMachine
 //     {
 //         if constexpr (IS_HIERARCHICAL) {
             
-//             StaticVector<StateNames, MaxDepth> newPath(1, Transition::to);
+//             StaticVector<StateId, MaxDepth> newPath(1, Transition::to);
 
 //             auto current = Transition::to;
 //             while(true) {
 //                 constexpr auto child = detail::template get_default_child<current, Hierarchy>();
-//                 if constexpr (child == StateNames{}) {
+//                 if constexpr (child == StateId{}) {
 //                     break;
 //                 }
 //                 else {
@@ -436,7 +458,7 @@ class StateMachine
 
 //         } else {
 //             // exit old state
-//             StateNames& activeState = m_activeStatePath[0];
+//             StateId& activeState = m_activeStatePath[0];
 //             callOnExit(activeState);
 
 //             // do transition
@@ -454,62 +476,10 @@ class StateMachine
 //         }
 //     }
 
-//     // ------------------------------------------------------
-//     //                          Data
-//     // ------------------------------------------------------
-//     States m_stateInstances;
-//     StaticVector<StateNames, MaxDepth> m_activeStatePath;
-//     std::deque<StateEvents> m_eventQueue;
-
-//     // ------------------------------------------------------
-//     //                    Compile Time Checks
-//     // ------------------------------------------------------
-//     static_assert(NUM_STATE_NAMES > 0 && NUM_STATE_NAMES == NUM_STATES, "Invalid number of States");
-
-//     template <size_t I>
-//     static constexpr bool CheckNameMatch() 
-//     {
-//         using State = std::tuple_element_t<I, States>;
-//         constexpr std::string_view state = reflect::type_name<State>();
-
-//         constexpr StateNames stateName = static_cast<StateNames>(I);
-//         constexpr std::string_view name = magic_enum::enum_name(stateName);
-
-//         return state == name;
-//     }
-
-//     template <size_t... I>
-//     static constexpr bool ValidateNames(std::index_sequence<I...>) 
-//     {
-//         return (CheckNameMatch<I>() && ...);
-//     }
-
-//     static_assert(ValidateNames(std::make_index_sequence<NUM_STATE_NAMES>{}), "Invalid Name of State");
-
-//     template<typename T>
-//     struct TransitionChecker;
-
-//     template<auto From, auto Trig, auto To, auto Action>
-//     struct TransitionChecker<StateTransition<From, Trig, To, Action>>
-//     {
-//         static constexpr bool valid =
-//             From != To &&
-//             std::is_same_v<decltype(From), StateNames> &&
-//             std::is_same_v<decltype(Trig), StateEvents> &&
-//             std::is_same_v<decltype(To), StateNames> &&
-//             magic_enum::enum_contains<StateNames>(From) &&
-//             magic_enum::enum_contains<StateEvents>(Trig) &&
-//             magic_enum::enum_contains<StateNames>(To);
-//     };
-
-//     template <size_t... I>
-//     static constexpr bool ValidateTransitions(std::index_sequence<I...>)
-//     {
-//         if constexpr (sizeof...(I) > 0) {
-//             return (TransitionChecker<std::tuple_element_t<I, Transitions>>::valid && ...);
-//         }
-//         return true;
-//     }
-
-//     static_assert(ValidateTransitions(std::make_index_sequence<NUM_TRANSITIONS>{}), "Invalid State Transition");
-// };
+    // ------------------------------------------------------
+    //                          Data
+    // ------------------------------------------------------
+    States m_states;
+    StaticVector<StateId, MaxDepth> m_activeStatePath;
+    std::deque<Events> m_eventQueue;
+};

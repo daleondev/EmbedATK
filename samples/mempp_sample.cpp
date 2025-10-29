@@ -65,9 +65,9 @@ int main()
 
     using StateHierarchy = std::tuple<
          SubstateGroup<TestActiveState, TestRunningState, TestPausedState>
-     >;
+    >;
 
-    StateMachine<TestStates, TestEvent, TestTransitions> testStateMachine;
+    StateMachine<TestStates, TestEvent, TestTransitions, StateHierarchy> testStateMachine;
 
     // constexpr auto traceTransition = [](Defs from, Events trig, Defs to) 
     // { 
