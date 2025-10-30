@@ -36,61 +36,72 @@ enum class TestEvent {
     UpdateFirmware
 };
 
+// For logging onActive calls in tests
+struct OnActiveCall {
+    TestState calledState;
+    std::vector<TestState> subStates;
+
+    bool operator==(const OnActiveCall& other) const {
+        return calledState == other.calledState && subStates == other.subStates;
+    }
+};
+std::vector<OnActiveCall> g_on_active_log;
+
 // --- State Implementations ---
 
 class Operational : public IState<TestState> {
 public:
     void onEntry() override { g_log.push_back("Enter Operational"); }
-    void onActive() override {}
+    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Operational, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Operational"); }
 };
 
 class Maintenance : public IState<TestState> {
 public:
     void onEntry() override { g_log.push_back("Enter Maintenance"); }
-    void onActive() override {}
+    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Maintenance, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Maintenance"); }
 };
 
 class Idle : public IState<TestState> {
 public:
     void onEntry() override { g_log.push_back("Enter Idle"); }
-    void onActive() override {}
+    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Idle, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Idle"); }
 };
 
 class Running : public IState<TestState> {
 public:
     void onEntry() override { g_log.push_back("Enter Running"); }
-    void onActive() override {}
+    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Running, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Running"); }
 };
 
 class Running_Sub1 : public IState<TestState> {
 public:
     void onEntry() override { g_log.push_back("Enter Running_Sub1"); }
-    void onActive() override {}
+    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Running_Sub1, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Running_Sub1"); }
 };
 
 class Running_Sub2 : public IState<TestState> {
 public:
     void onEntry() override { g_log.push_back("Enter Running_Sub2"); }
-    void onActive() override {}
+    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Running_Sub2, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Running_Sub2"); }
 };
 
 class SelfCheck : public IState<TestState> {
 public:
     void onEntry() override { g_log.push_back("Enter SelfCheck"); }
-    void onActive() override {}
+    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::SelfCheck, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit SelfCheck"); }
 };
 
 class FirmwareUpdate : public IState<TestState> {
 public:
     void onEntry() override { g_log.push_back("Enter FirmwareUpdate"); }
-    void onActive() override {}
+    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::FirmwareUpdate, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit FirmwareUpdate"); }
 };
 
@@ -156,6 +167,7 @@ class StateMachineTest : public ::testing::Test {
 protected:
     void SetUp() override {
         g_log.clear();
+        g_on_active_log.clear();
     }
 
     void TearDown() override {
@@ -266,4 +278,34 @@ TEST_F(StateMachineTest, OriginalBug_HierarchicalExit) {
     // printLog(g_log); // Keep this for debugging if it fails
     EXPECT_EQ(g_log, expected_log);
     EXPECT_EQ(sm.currentState(), TestState::SelfCheck);
+}
+
+TEST_F(StateMachineTest, OnActiveOrderAndParameters) {
+    StateMachine<TestHSMStates, TestEvent, TestHSMTransitions, TestHSMHierarchy> sm;
+    
+    // Go to a nested state: Operational -> Idle -> Running -> Running_Sub1
+    sm.sendEvent(TestEvent::Run);
+    sm.update();
+    ASSERT_EQ(sm.currentState(), TestState::Running_Sub1);
+
+    // Clear logs and call update again to trigger onActive calls
+    g_on_active_log.clear();
+    sm.update();
+
+    // --- Verification ---
+    
+    // The active path is [Operational, Running, Running_Sub1].
+    // The call order for onActive should be bottom-up: Running_Sub1 -> Running -> Operational.
+    // The 'subStates' parameter should contain the children that have already been processed in the same tick.
+    std::vector<OnActiveCall> expected_calls = {
+        // 1. Called on Running_Sub1. subStates is empty.
+        {TestState::Running_Sub1, {}},
+        // 2. Called on Running. subStates is [Running_Sub1].
+        {TestState::Running, {TestState::Running_Sub1}},
+        // 3. Called on Operational. subStates is [Running_Sub1, Running].
+        {TestState::Operational, {TestState::Running_Sub1, TestState::Running}},
+    };
+
+    ASSERT_EQ(g_on_active_log.size(), expected_calls.size());
+    EXPECT_EQ(g_on_active_log, expected_calls);
 }

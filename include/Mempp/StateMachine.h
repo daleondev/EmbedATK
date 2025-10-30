@@ -24,7 +24,7 @@ public:
     virtual ~IState() = default;
     
     virtual void onEntry() = 0;
-    virtual void onActive() = 0;
+    virtual void onActive(StateId* subStates, size_t numSubStates) = 0;
     virtual void onExit() = 0;
 };
 
@@ -171,7 +171,6 @@ public:
             callOnEntry(m_activeStatePath[i]);
         }
 
-        // Enter default child states until a leaf is reached
         enterDefaultChildren();
     }
 
@@ -195,8 +194,10 @@ public:
             processEvent(event);
         }
 
-        for(size_t i = 0; i < m_activeStatePath.size(); ++i) {
-            callOnActive(m_activeStatePath[i]);
+        StaticVector<StateId, MaxDepth-1> subStates{};
+        for (auto state : m_activeStatePath | std::views::reverse) {
+            callOnActive(state, subStates.data(), subStates.size());
+            subStates.push_back(state);
         }
     }
 
@@ -204,6 +205,9 @@ public:
     const auto& currentStatePath() const { return m_activeStatePath; }
 
 private:
+    // ------------------------------------------------------
+    //                 Event processing
+    // ------------------------------------------------------
     void processEvent(Events event)
     {
         if constexpr (NUM_TRANSITIONS > 0)
@@ -262,7 +266,7 @@ private:
         std::optional<size_t> lcaIndex;
         if constexpr (IS_HIERARCHICAL) {
             size_t minPathSize = std::min(m_activeStatePath.size(), toPath.size());
-            for(size_t i = 0; i < minPathSize; ++i) {
+            for (size_t i = 0; i < minPathSize; ++i) {
                 if (m_activeStatePath[i] == toPath[i]) {
                     lcaIndex = i;
                 } else {
@@ -296,7 +300,6 @@ private:
     // ------------------------------------------------------
     //                 State Implementation Helpers
     // ------------------------------------------------------
-
     template<auto Id, size_t I = 0>
     constexpr auto& stateImpl() {
         if constexpr (I == NUM_STATES) {
@@ -316,15 +319,14 @@ private:
     {
         magic_enum::enum_switch([this](auto s) { stateImpl<s.value>().onExit(); }, state);
     }
-    constexpr void callOnActive(StateId state) 
+    constexpr void callOnActive(StateId state, StateId* subStates, size_t numSubStates) 
     {
-        magic_enum::enum_switch([this](auto s) { stateImpl<s.value>().onActive(); }, state);
+        magic_enum::enum_switch([this, subStates, numSubStates](auto s) { stateImpl<s.value>().onActive(subStates, numSubStates); }, state);
     }
 
     // ------------------------------------------------------
     //                  Hierarchy Helpers
     // ------------------------------------------------------
-
     void enterDefaultChildren()
     {
         if constexpr (IS_HIERARCHICAL) {
