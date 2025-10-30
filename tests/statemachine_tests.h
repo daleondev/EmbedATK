@@ -117,6 +117,18 @@ using TestHSMStates = States<
     FirmwareUpdateState
 >;
 
+// --- States Container (with substate as default) ---
+using TestHSMStates_SubstateDefault = States<
+    IdleState, // Default is now IdleState
+    OperationalState,
+    MaintenanceState,
+    RunningState,
+    Running_Sub1State,
+    Running_Sub2State,
+    SelfCheckState,
+    FirmwareUpdateState
+>;
+
 // --- Transitions ---
 using TestHSMTransitions = StateTransitions<
     // Transitions within Operational
@@ -162,6 +174,14 @@ protected:
 
 TEST_F(StateMachineTest, Initialization) {
     StateMachine<TestHSMStates, TestEvent, TestHSMTransitions, TestHSMHierarchy> sm;
+    
+    std::vector<std::string> expected_log = {"Enter Operational", "Enter Idle"};
+    EXPECT_EQ(g_log, expected_log);
+    EXPECT_EQ(sm.currentState(), TestState::Idle);
+}
+
+TEST_F(StateMachineTest, InitializationWithSubstateAsDefault) {
+    StateMachine<TestHSMStates_SubstateDefault, TestEvent, TestHSMTransitions, TestHSMHierarchy> sm;
     
     std::vector<std::string> expected_log = {"Enter Operational", "Enter Idle"};
     EXPECT_EQ(g_log, expected_log);

@@ -171,17 +171,8 @@ public:
             callOnEntry(m_activeStatePath[i]);
         }
 
-        if constexpr (IS_HIERARCHICAL) {
-            // Enter default child states until a leaf is reached
-            auto lastState = m_activeStatePath[m_activeStatePath.size() - 1];
-            auto defaultChild = findDefaultChild(lastState);
-            while(defaultChild) {
-                m_activeStatePath.push_back(*defaultChild);
-                callOnEntry(*defaultChild);
-                lastState = *defaultChild;
-                defaultChild = findDefaultChild(lastState);
-            }
-        }
+        // Enter default child states until a leaf is reached
+        enterDefaultChildren();
     }
 
     ~StateMachine()
@@ -299,6 +290,43 @@ private:
         
         m_activeStatePath = newPath;
 
+        enterDefaultChildren();
+    }
+
+    // ------------------------------------------------------
+    //                 State Implementation Helpers
+    // ------------------------------------------------------
+
+    template<auto Id, size_t I = 0>
+    constexpr auto& stateImpl() {
+        if constexpr (I == NUM_STATES) {
+            static_assert(I != NUM_STATES, "State ID not found");
+        } else if constexpr (std::tuple_element_t<I, States>::ID == Id) {
+            return std::get<I>(m_states).impl;
+        } else {
+            return stateImpl<Id, I + 1>();
+        }
+    }
+
+    constexpr void callOnEntry(StateId state) 
+    {
+        magic_enum::enum_switch([this](auto s) { stateImpl<s.value>().onEntry(); }, state);
+    }
+    constexpr void callOnExit(StateId state) 
+    {
+        magic_enum::enum_switch([this](auto s) { stateImpl<s.value>().onExit(); }, state);
+    }
+    constexpr void callOnActive(StateId state) 
+    {
+        magic_enum::enum_switch([this](auto s) { stateImpl<s.value>().onActive(); }, state);
+    }
+
+    // ------------------------------------------------------
+    //                  Hierarchy Helpers
+    // ------------------------------------------------------
+
+    void enterDefaultChildren()
+    {
         if constexpr (IS_HIERARCHICAL) {
             auto lastState = m_activeStatePath[m_activeStatePath.size() - 1];
             auto defaultChild = findDefaultChild(lastState);
@@ -310,38 +338,6 @@ private:
             }
         }
     }
-
-    // ------------------------------------------------------
-    //                 State Implementation Helpers
-    // ------------------------------------------------------
-
-    template<auto Id, size_t I = 0>
-    constexpr auto& get_state_impl() {
-        if constexpr (I == NUM_STATES) {
-            static_assert(I != NUM_STATES, "State ID not found");
-        } else if constexpr (std::tuple_element_t<I, States>::ID == Id) {
-            return std::get<I>(m_states).impl;
-        } else {
-            return get_state_impl<Id, I + 1>();
-        }
-    }
-
-    constexpr void callOnEntry(StateId state) 
-    {
-        magic_enum::enum_switch([this](auto s) { get_state_impl<s.value>().onEntry(); }, state);
-    }
-    constexpr void callOnExit(StateId state) 
-    {
-        magic_enum::enum_switch([this](auto s) { get_state_impl<s.value>().onExit(); }, state);
-    }
-    constexpr void callOnActive(StateId state) 
-    {
-        magic_enum::enum_switch([this](auto s) { get_state_impl<s.value>().onActive(); }, state);
-    }
-
-    // ------------------------------------------------------
-    //                  Hierarchy Helpers
-    // ------------------------------------------------------
 
     template<size_t G = 0, size_t C = 0>
     constexpr auto findParent(StateId childId) -> std::optional<StateId> {
