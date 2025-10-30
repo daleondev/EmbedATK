@@ -9,7 +9,7 @@ class TestIdle : public IState<TestState>
 {
 public:
     virtual void onEntry() override { std::cout << "entry Idle" << std::endl; }
-    virtual void onActive(TestState*, size_t) override { std::cout << "active Idle" << std::endl; }
+    virtual void onActive() override { std::cout << "active Idle" << std::endl; }
     virtual void onExit() override { std::cout << "exit Idle" << std::endl; }
 };
 
@@ -17,7 +17,7 @@ class TestActive : public IState<TestState>
 {
 public:
     virtual void onEntry() override { std::cout << "entry Active" << std::endl; }
-    virtual void onActive(TestState*, size_t) override { std::cout << "active Active" << std::endl; }
+    virtual void onActive() override { std::cout << "active Active" << std::endl; }
     virtual void onExit() override { std::cout << "exit Active" << std::endl; }
 };
 
@@ -25,7 +25,7 @@ class TestRunning : public IState<TestState>
 {
 public:
     virtual void onEntry() override { std::cout << "entry Running" << std::endl; }
-    virtual void onActive(TestState*, size_t) override { std::cout << "active Running" << std::endl; }
+    virtual void onActive() override { std::cout << "active Running" << std::endl; }
     virtual void onExit() override { std::cout << "exit Running" << std::endl; }
 };
 
@@ -33,7 +33,7 @@ class TestPaused : public IState<TestState>
 {
 public:
     virtual void onEntry() override { std::cout << "entry Paused" << std::endl; }
-    virtual void onActive(TestState*, size_t) override { std::cout << "active Paused" << std::endl; }
+    virtual void onActive() override { std::cout << "active Paused" << std::endl; }
     virtual void onExit() override { std::cout << "exit Paused" << std::endl; }
 };
 
@@ -68,6 +68,20 @@ int main()
     >;
 
     StateMachine<TestStates, TestEvent, TestTransitions, StateHierarchy> testStateMachine;
+
+    size_t i = 0;
+    while(true) {
+        testStateMachine.update();
+        if (i++ == 10) {
+            testStateMachine.sendEvent(TestEvent::Btn1);
+        }
+        if (i == 20){
+            testStateMachine.sendEvent(TestEvent::Btn2);
+        }
+        if (i == 30){
+            break;
+        }
+    }
 
     // constexpr auto traceTransition = [](Defs from, Events trig, Defs to) 
     // { 

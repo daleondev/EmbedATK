@@ -1,68 +1,3 @@
-/*
- * A modern, compile-time hierarchical state machine (HSM).
- *
- * This state machine supports nested states, allowing for more complex and organized
- * state logic. The hierarchy is defined at compile-time, ensuring type safety and
- * high performance.
- *
- * --- Hierarchical State Machine (HSM) Example ---
- *
- * The hierarchy is defined using `SubstateGroup` structs, which specify parent-child
- * relationships and default child states.
- *
- * 1. State Definitions (as an enum):
- *    enum class Defs {
- *        Stopped,
- *        Playing,
- *        Video,
- *        Audio,
- *        Buffering,
- *        ShowingUI
- *    };
- *
- * 2. Hierarchy Definition:
- *    using PlayerHierarchy = std::tuple<
- *        // `Playing` is a parent state. `Video` is its default child.
- *        SubstateGroup<Defs::Playing, Defs::Video, Defs::Audio, Defs::ShowingUI>,
- *
- *        // `Video` is also a parent state. `Buffering` is its default child.
- *        SubstateGroup<Defs::Video, Defs::Buffering>
- *    >;
- *
- * 3. Visual Representation:
- *    This hierarchy code models the following state tree:
- *
- *    (root)
- *      |
- *      ├─ [Stopped]
- *      |
- *      └─ [Playing]            (Parent)
- *         │
- *         ├─ [Video]           (Default Child of Playing, and also a Parent)
- *         │  │
- *         │  └─ [Buffering]    (Default Child of Video)
- *         │
- *         ├─ [Audio]
- *         │
- *         └─ [ShowingUI]
- *
- * --- Key Behaviors ---
- *
- * - Event Bubbling: If an event occurs in the `Buffering` state, the HSM first
- *   checks for transitions from `Buffering`. If none match, it checks for
- *   transitions from the parent `Video`. If still no match, it checks the next
- *   parent, `Playing`. This allows parent states to handle common events for all
- *   their children.
- *
- * - Default Entry: If a transition targets a parent state (e.g., `Playing`),
- *   the HSM will automatically enter its default child (`Video`), and continue
- *   drilling down to the deepest default child (`Buffering`). The full entry
- *   sequence would call onEntry() for `Playing`, then `Video`, then `Buffering`.
- *
- * - Transitions: The state machine correctly calculates the exit and entry paths
- *   for transitions between any two states in the hierarchy, ensuring that
- *   `onExit` and `onEntry` are called correctly for all affected states.
- */
 #pragma once
 
 #include "Concepts.h"
@@ -87,17 +22,17 @@ public:
     virtual ~IState() = default;
     
     virtual void onEntry() = 0;
-    virtual void onActive(StateId* substates = nullptr, size_t numSubstates = 0) = 0;
+    virtual void onActive() = 0;
     virtual void onExit() = 0;
 };
 
 // State definition (consists of enum class value and implementation class with matching names)
 template<auto StateId, IsBaseOf<IState<decltype(StateId)>> StateImpl>
-requires 
-    IsEnumClass<decltype(StateId)> &&
-    (magic_enum::enum_name(StateId) == reflect::type_name<StateImpl>())
 struct State
 {
+    static_assert(magic_enum::is_scoped_enum_v<decltype(StateId)>);
+    static_assert(magic_enum::enum_name(StateId) == reflect::type_name<StateImpl>());
+
     using IdType                = decltype(StateId);
     static constexpr IdType ID  = StateId;
     StateImpl impl;
@@ -111,7 +46,8 @@ concept IsState = requires {
     { T::ID };
     { T::impl };
 } && 
-IsEnumClass<typename T::IdType> && IsBaseOf<decltype(T::impl), IState<std::remove_const_t<typename T::IdType>>> &&
+magic_enum::is_scoped_enum_v<typename T::IdType> && 
+std::is_base_of_v<IState<std::remove_const_t<typename T::IdType>>, decltype(T::impl)> &&
 magic_enum::enum_name(T::ID) == reflect::type_name<decltype(T::impl)>();
 
 // For defining all States of a State Machine
@@ -125,11 +61,12 @@ using States = std::tuple<DefaultState, OtherStates...>;
 
 // State Transition from one State to another on trigger with optional callback
 template<IsState From, auto Trig, IsState To, auto Action = std::nullopt>
-requires
-    (!std::is_same_v<From, To>) && IsEnumClass<decltype(Trig)> &&
-    IsOptionallyInvocable<decltype(Action), decltype(From::ID), decltype(Trig), decltype(To::ID)>
 struct StateTransition
 {
+    static_assert(!std::is_same_v<From, To>);
+    static_assert(magic_enum::is_scoped_enum_v<decltype(Trig)>);
+    static_assert(is_optionally_invocable_v<decltype(Action), decltype(From::ID), decltype(Trig), decltype(To::ID)>);
+
     using OldState                  = From;
     using NewState                  = To;
     static constexpr auto TRIG      = Trig;
@@ -146,8 +83,8 @@ concept IsStateTransition = requires {
     { T::ACTION };
 } && 
 (
-    IsState<typename T::OldState> && IsEnumClass<decltype(T::TRIG)> && IsState<typename T::NewState> &&
-    IsOptionallyInvocable<decltype(T::ACTION), decltype(T::OldState::ID), decltype(T::TRIG), decltype(T::NewState::ID)> &&
+    IsState<typename T::OldState> && magic_enum::is_scoped_enum_v<decltype(T::TRIG)> && IsState<typename T::NewState> &&
+    is_optionally_invocable_v<decltype(T::ACTION), decltype(T::OldState::ID), decltype(T::TRIG), decltype(T::NewState::ID)> &&
     !std::is_same_v<typename T::OldState, typename T::NewState> &&
     std::is_same_v<decltype(T::OldState::ID), decltype(T::NewState::ID)>
 );
@@ -163,11 +100,11 @@ using StateTransitions = std::tuple<FirstTransition, OtherTransitions...>;
 
 // Substate-Group for defining hierarchical States
 template<IsState Parent, IsState DefaultChild, IsState... Children>
-requires 
-    (!std::is_same_v<Parent, DefaultChild>) && 
-    ((!std::is_same_v<Parent, Children> && !std::is_same_v<DefaultChild, Children>) && ...)
 struct SubstateGroup 
 {
+    static_assert(!std::is_same_v<Parent, DefaultChild>);
+    static_assert(((!std::is_same_v<Parent, Children> && !std::is_same_v<DefaultChild, Children>) && ...));
+    
     using ParentState       = Parent;
     using DefaultChildState = DefaultChild;
     using ChildStates       = std::tuple<DefaultChild, Children...>;
@@ -231,19 +168,24 @@ public:
         auto defaultState = std::tuple_element_t<0, States>::ID;
         m_activeStatePath.push_back(defaultState);
 
-        // if constexpr (IS_HIERARCHICAL) {
-        //     auto current = defaultState;
-        //     while(true) {
-        //         constexpr auto child = detail::template get_default_child<current, Hierarchy>();
-        //         if constexpr (child == StateId{}) {
-        //             break;
-        //         } 
-        //         else {
-        //             m_activeStatePath.push_back(child);
-        //             current = child;
-        //         }
-        //     }
-        // }
+        if constexpr (IS_HIERARCHICAL) {
+            auto current = defaultState;
+            while(true) {
+                StateId child = StateId{};
+                magic_enum::enum_switch([&](auto state_val) {
+                    constexpr auto S = state_val.value;
+                    child = detail::template get_default_child<S, Hierarchy>();
+                }, current);
+
+                if (child == StateId{}) {
+                    break;
+                } 
+                else {
+                    m_activeStatePath.push_back(child);
+                    current = child;
+                }
+            }
+        }
         
         for(size_t i = 0; i < m_activeStatePath.size(); ++i) {
             callOnEntry(m_activeStatePath[i]);
@@ -280,15 +222,142 @@ public:
 
 private:
     // ------------------------------------------------------
+    //                 State Implementation Helpers
+    // ------------------------------------------------------
+
+    template<auto Id, size_t I = 0>
+    constexpr auto& get_state_impl() {
+        if constexpr (I == NUM_STATES) {
+            static_assert(I != NUM_STATES, "State ID not found");
+        } else if constexpr (std::tuple_element_t<I, States>::ID == Id) {
+            return std::get<I>(m_states).impl;
+        } else {
+            return get_state_impl<Id, I + 1>();
+        }
+    }
+
+    constexpr void callOnEntry(StateId state) 
+    {
+        magic_enum::enum_switch([this](auto s) { get_state_impl<s.value>().onEntry(); }, state);
+    }
+    constexpr void callOnExit(StateId state) 
+    {
+        magic_enum::enum_switch([this](auto s) { get_state_impl<s.value>().onExit(); }, state);
+    }
+    constexpr void callOnActive(StateId state) 
+    {
+        magic_enum::enum_switch([this](auto s) { get_state_impl<s.value>().onActive(); }, state);
+    }
+
+    // ------------------------------------------------------
+    //                 Event & Transition Logic
+    // ------------------------------------------------------
+    void processEvent(Events event) {
+        if constexpr (IS_HIERARCHICAL) {
+            for (size_t i = m_activeStatePath.size(); i > 0; --i) {
+                if (findAndExecuteTransition(m_activeStatePath[i-1], event)) {
+                    return;
+                }
+            }
+        } else {
+            findAndExecuteTransition(m_activeStatePath[0], event);
+        }
+    }
+
+    template<size_t I = 0>
+    bool findAndExecuteTransition(StateId state, Events event) {
+        if constexpr (I < NUM_TRANSITIONS) {
+            using Transition = std::tuple_element_t<I, Transitions>;
+            
+            if (Transition::OldState::ID == state && Transition::TRIG == event) {
+                executeTransition<Transition>();
+                return true;
+            }
+            return findAndExecuteTransition<I + 1>(state, event);
+        }
+        return false;
+    }
+
+    template<typename Transition>
+    void executeTransition() 
+    {
+        if constexpr (IS_HIERARCHICAL) {
+            StaticVector<StateId, MaxDepth> newPath(1, Transition::NewState::ID);
+
+            auto current = Transition::NewState::ID;
+            while(true) {
+                StateId child = StateId{};
+                magic_enum::enum_switch([&](auto state_val) {
+                    constexpr auto S = state_val.value;
+                    child = detail::template get_default_child<S, Hierarchy>();
+                }, current);
+
+                if (child == StateId{}) {
+                    break;
+                }
+                else {
+                    newPath.push_back(child);
+                    current = child;
+                }
+            }
+
+            size_t diverge_idx = 0;
+            for(size_t i = 0; i < m_activeStatePath.size() && i < newPath.size(); ++i) {
+                if(m_activeStatePath[i] != newPath[i]) break;
+                diverge_idx = i + 1;
+            }
+
+            // Exit states
+            for(size_t i = m_activeStatePath.size(); i > diverge_idx; --i) {
+                callOnExit(m_activeStatePath[i-1]);
+            }
+
+            // Action
+            if constexpr (!std::is_same_v<std::decay_t<decltype(Transition::ACTION)>, std::nullopt_t>) {
+                if constexpr (is_optional_v<decltype(Transition::ACTION)>) {
+                    if (Transition::ACTION) (*Transition::ACTION)(Transition::OldState::ID, Transition::TRIG, Transition::NewState::ID);
+                }
+                else {
+                    Transition::ACTION(Transition::OldState::ID, Transition::TRIG, Transition::NewState::ID);
+                }
+            }
+
+            // Rebuild active path
+            m_activeStatePath.resize(diverge_idx);
+            for(size_t i = diverge_idx; i < newPath.size(); ++i) {
+                m_activeStatePath.push_back(newPath[i]);
+            }
+
+            // Enter states
+            for(size_t i = diverge_idx; i < m_activeStatePath.size(); ++i) {
+                callOnEntry(m_activeStatePath[i]);
+            }
+
+        } else {
+            // exit old state
+            StateId& activeState = m_activeStatePath[0];
+            callOnExit(activeState);
+
+            // do transition
+            if constexpr (!std::is_same_v<std::decay_t<decltype(Transition::ACTION)>, std::nullopt_t>) {
+                if constexpr (is_optional_v<decltype(Transition::ACTION)>) {
+                    if (Transition::ACTION) (*Transition::ACTION)(Transition::OldState::ID, Transition::TRIG, Transition::NewState::ID);
+                }
+                else {
+                    Transition::ACTION(Transition::OldState::ID, Transition::TRIG, Transition::NewState::ID);
+                }
+            }
+
+            // enter new state
+            activeState = Transition::NewState::ID;
+            callOnEntry(activeState);
+        }
+    }
+
+    // ------------------------------------------------------
     //                 Metaprogramming Helpers
     // ------------------------------------------------------
     struct detail {
-        template<typename T, typename Tuple>
-        struct has_type;
-
-        template<typename T, typename... Us>
-        struct has_type<T, std::tuple<Us...>> : std::disjunction<std::is_same<T, Us>...> {};
-
         template<auto S, typename T>
         struct get_parent_impl;
 
@@ -298,7 +367,7 @@ private:
                 StateId parent = StateId{};
                 ([&]{
                     using ChildrenTuple = typename Gs::children;
-                    if (has_type<std::integral_constant<StateId, S>, ChildrenTuple>::value) {
+                    if constexpr (has_type_v<ChildrenTuple, std::integral_constant<StateId, S>>) {
                         parent = Gs::parent;
                     }
                 }(), ...);
@@ -321,8 +390,8 @@ private:
             static constexpr auto get() {
                 StateId child = StateId{};
                 ([&]{
-                    if (Gs::parent == S) {
-                        child = Gs::default_child;
+                    if (Gs::ParentState::ID == S) {
+                        child = Gs::DefaultChildState::ID;
                     }
                 }(), ...);
                 return child;
@@ -348,133 +417,6 @@ private:
             }
         }
     };
-
-    // ------------------------------------------------------
-    //                 State Implementation Helpers
-    // ------------------------------------------------------
-
-    template<auto Id, size_t I = 0>
-    auto& stateImpl() {
-        if constexpr (I == NUM_STATES) {
-            static_assert(I != NUM_STATES, "State ID not found");
-        } else if constexpr (std::tuple_element_t<I, States>::ID == Id) {
-            return std::get<I>(m_states).impl;
-        } else {
-            return stateImpl<Id, I + 1>();
-        }
-    }
-
-    void callOnEntry(StateId state) 
-    {
-        magic_enum::enum_switch([this](auto s) { stateImpl<s.value>().onEntry(); }, state);
-    }
-    void callOnExit(StateId state) 
-    {
-        magic_enum::enum_switch([this](auto s) { stateImpl<s.value>().onExit(); }, state);
-    }
-    void callOnActive(StateId state) 
-    {
-        magic_enum::enum_switch([this](auto s) { stateImpl<s.value>().onActive(); }, state);
-    }
-
-//     // ------------------------------------------------------
-//     //                 Event & Transition Logic
-//     // ------------------------------------------------------
-//     void processEvent(StateEvents event) {
-//         if constexpr (IS_HIERARCHICAL) {
-//             for (size_t i = m_activeStatePath.size(); i > 0; --i) {
-//                 if (findAndExecuteTransition(m_activeStatePath[i-1], event)) {
-//                     return;
-//                 }
-//             }
-//         } else {
-//             findAndExecuteTransition(m_activeStatePath[0], event);
-//         }
-//     }
-
-//     template<size_t I = 0>
-//     bool findAndExecuteTransition(StateId state, StateEvents event) {
-//         if constexpr (I < NUM_TRANSITIONS) {
-//             using Transition = std::tuple_element_t<I, Transitions>;
-//             if (Transition::from == state && Transition::trig == event) {
-//                 executeTransition<Transition>();
-//                 return true;
-//             }
-//             return findAndExecuteTransition<I + 1>(state, event);
-//         }
-//         return false;
-//     }
-
-//     template<typename Transition>
-//     void executeTransition() 
-//     {
-//         if constexpr (IS_HIERARCHICAL) {
-            
-//             StaticVector<StateId, MaxDepth> newPath(1, Transition::to);
-
-//             auto current = Transition::to;
-//             while(true) {
-//                 constexpr auto child = detail::template get_default_child<current, Hierarchy>();
-//                 if constexpr (child == StateId{}) {
-//                     break;
-//                 }
-//                 else {
-//                     newPath.push_back(child);
-//                     current = child;
-//                 }
-//             }
-
-//             size_t diverge_idx = 0;
-//             for(size_t i = 0; i < m_activeStatePath.size() && i < newPath.size(); ++i) {
-//                 if(m_activeStatePath[i] != newPath[i]) break;
-//                 diverge_idx = i + 1;
-//             }
-
-//             // Exit states
-//             for(size_t i = m_activeStatePath.size(); i > diverge_idx; --i) {
-//                 callOnExit(m_activeStatePath[i-1]);
-//             }
-
-//             // Action
-//             if constexpr (!std::is_same_v<std::decay_t<decltype(Transition::action)>, std::nullopt_t>) {
-//                 if constexpr (is_optional_v<decltype(Transition::action)>) {
-//                     if (Transition::action) (*Transition::action)(Transition::from, Transition::trig, Transition::to);
-//                 }
-//                 else {
-//                     Transition::action(Transition::from, Transition::trig, Transition::to);
-//                 }
-//             }
-
-//             // Rebuild active path
-//             m_activeStatePath.resize(diverge_idx);
-//             for(size_t i = diverge_idx; i < newPath.size(); ++i) {
-//                 m_activeStatePath.push_back(newPath[i]);
-//             }
-
-//             // Enter states
-//             for(size_t i = diverge_idx; i < m_activeStatePath.size(); ++i) {
-//                 callOnEntry(m_activeStatePath[i]);
-//             }
-
-//         } else {
-//             // exit old state
-//             StateId& activeState = m_activeStatePath[0];
-//             callOnExit(activeState);
-
-//             // do transition
-//             if constexpr (!std::is_same_v<std::decay_t<decltype(Transition::action)>, std::nullopt_t>) {
-//                  if constexpr (is_optional_v<decltype(Transition::action)>) {
-//                     if (Transition::action) (*Transition::action)(Transition::from, Transition::trig, Transition::to);
-//                 } else {
-//                     Transition::action(Transition::from, Transition::trig, Transition::to);
-//                 }
-//             }
-
-//             // enter new state
-//             activeState = Transition::to;
-//             callOnEntry(activeState);
-//         }
-//     }
 
     // ------------------------------------------------------
     //                          Data

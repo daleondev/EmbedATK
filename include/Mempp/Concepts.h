@@ -41,6 +41,22 @@ template <typename Tuple>
 concept IsTuple = is_tuple_v<Tuple>;
 
 //------------------------------------------------------
+//                 Tuple has type
+//------------------------------------------------------
+
+template<typename T, typename NotTuple>
+struct has_type : std::false_type {};
+
+template<typename T, typename... TupleTypes>
+struct has_type<T, std::tuple<TupleTypes...>> : std::disjunction<std::is_same<T, TupleTypes>...> {};
+
+template <typename Tuple, typename T>
+inline constexpr bool has_type_v = has_type<T, Tuple>::value;
+
+template <typename T, typename Tuple>
+concept HasType = has_type_v<Tuple, T>;
+
+//------------------------------------------------------
 //                      Enum class
 //------------------------------------------------------
 
@@ -77,7 +93,10 @@ template <typename OptionallyInvocable>
 using optional_inner_type_t = typename optional_inner_type<std::remove_cvref_t<OptionallyInvocable>>::type;
 
 template <typename OptionallyInvocable, typename... Args>
-concept IsOptionallyInvocable = 
+inline constexpr bool is_optionally_invocable_v = 
     std::invocable<OptionallyInvocable, Args...> ||
     std::same_as<std::remove_cvref_t<OptionallyInvocable>, std::nullopt_t> ||
     (is_optional_v<OptionallyInvocable> && std::invocable<optional_inner_type_t<OptionallyInvocable>, Args...>);
+
+template <typename OptionallyInvocable, typename... Args>
+concept IsOptionallyInvocable = is_optionally_invocable_v<OptionallyInvocable, Args...>;
