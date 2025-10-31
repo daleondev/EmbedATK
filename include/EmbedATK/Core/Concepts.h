@@ -4,6 +4,9 @@
 //                      Base of
 //------------------------------------------------------
 
+template <typename Derived, typename Base>
+concept IsBaseOf = std::is_base_of_v<Base, Derived>;
+
 template <typename Base, typename T>
 struct is_base_of_all : std::false_type {};
 
@@ -19,8 +22,21 @@ inline constexpr bool is_base_of_all_v = is_base_of_all<Base, DerivedTypes>::val
 template <typename DerivedTypes, typename Base>
 concept IsBaseOfAll = is_base_of_all_v<Base, DerivedTypes>;
 
-template <typename Derived, typename Base>
-concept IsBaseOf = std::is_base_of_v<Base, Derived>;
+namespace detail {
+template <template <auto...> class BaseTemplate, auto... Args>
+void is_templated_base_of(const BaseTemplate<Args...>*);
+}
+
+template <template <auto...> class BaseTemplate, typename Derived>
+concept is_templated_base_of = requires(Derived* p) {
+    detail::is_templated_base_of<BaseTemplate>(p);
+};
+
+template <template <auto...> class BaseTemplate, typename Derived>
+inline constexpr bool is_templated_base_of_v = is_templated_base_of<BaseTemplate, Derived>;
+
+template <typename Derived, template <auto...> class BaseTemplate>
+concept IsTemplatedBaseOf = is_templated_base_of_v<BaseTemplate, Derived>;
 
 //------------------------------------------------------
 //                      Tuple
@@ -98,3 +114,38 @@ inline constexpr bool is_optionally_invocable_v =
 
 template <typename OptionallyInvocable, typename... Args>
 concept IsOptionallyInvocable = is_optionally_invocable_v<OptionallyInvocable, Args...>;
+
+//------------------------------------------------------
+//                      Unique in tuple
+//------------------------------------------------------
+
+template <typename T, typename... Pack>
+inline constexpr size_t count_type_v = (static_cast<size_t>(std::is_same_v<T, Pack>) + ...);
+
+template <typename... Types>
+inline constexpr bool are_types_unique_v = ((count_type_v<Types, Types...> == 1) && ...);
+
+template <typename T>
+struct all_tuple_types_unique;
+
+template <typename... Types>
+struct all_tuple_types_unique<std::tuple<Types...>> {
+    static constexpr bool value = are_types_unique_v<Types...>;
+};
+
+template <typename T>
+inline constexpr bool all_tuple_types_unique_v = all_tuple_types_unique<T>::value;
+
+//------------------------------------------------------
+//                      Type in tuple
+//------------------------------------------------------
+
+template<typename T, typename Tuple>
+struct is_type_in_tuple;
+
+template<typename T, typename... Ts>
+struct is_type_in_tuple<T, std::tuple<Ts...>>
+    : std::bool_constant<(std::is_same_v<T, Ts> || ...)> {};
+
+template<typename T, typename Tuple>
+inline constexpr bool is_type_in_tuple_v = is_type_in_tuple<T, Tuple>::value;

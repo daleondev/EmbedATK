@@ -109,6 +109,8 @@
         "__node_handle": "cpp",
         "__memory": "cpp",
         "reflect": "cpp",
-        "*.md": "cpp"
+        "*.md": "cpp",
+        "future": "cpp",
+        "print": "cpp"
     }
 }

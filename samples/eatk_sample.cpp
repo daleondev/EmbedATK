@@ -3,7 +3,7 @@
 enum class TestState { TestIdle, TestActive, TestRunning, TestPaused };
 enum class TestEvent { Btn1, Btn2 };
 
-class TestIdle : public IState<TestState>
+class TestIdle : public IState<TestState::TestIdle>
 {
 public:
     virtual void onEntry() override { std::cout << "entry Idle" << std::endl; }
@@ -11,7 +11,7 @@ public:
     virtual void onExit() override { std::cout << "exit Idle" << std::endl; }
 };
 
-class TestActive : public IState<TestState>
+class TestActive : public IState<TestState::TestActive>
 {
 public:
     virtual void onEntry() override { std::cout << "entry Active" << std::endl; }
@@ -19,7 +19,7 @@ public:
     virtual void onExit() override { std::cout << "exit Active" << std::endl; }
 };
 
-class TestRunning : public IState<TestState>
+class TestRunning : public IState<TestState::TestRunning>
 {
 public:
     virtual void onEntry() override { std::cout << "entry Running" << std::endl; }
@@ -27,7 +27,7 @@ public:
     virtual void onExit() override { std::cout << "exit Running" << std::endl; }
 };
 
-class TestPaused : public IState<TestState>
+class TestPaused : public IState<TestState::TestPaused>
 {
 public:
     virtual void onEntry() override { std::cout << "entry Paused" << std::endl; }
@@ -35,51 +35,53 @@ public:
     virtual void onExit() override { std::cout << "exit Paused" << std::endl; }
 };
 
+using TestStates = States<
+    TestIdle,
+    TestActive,
+    TestRunning,
+    TestPaused
+>;
+
+using TestTransitions = StateTransitions<
+    StateTransition<TestIdle, TestEvent::Btn1, TestActive>,
+    StateTransition<TestActive, TestEvent::Btn2, TestIdle>
+>;
+
+using Hierarchy = StateHierarchy<
+    SubstateGroup<TestActive, TestRunning, TestPaused>
+>;
+
+StateMachine<TestStates, TestEvent, TestTransitions, Hierarchy> testStateMachine;
+
 int main()
 {
-    constexpr auto traceTransition = [](TestState from, TestEvent trig, TestState to) 
-    { 
-        std::cout << "transition from: " << magic_enum::enum_name(from);
-        std::cout << " to: " << magic_enum::enum_name(to);
-        std::cout << ", trigger: " << magic_enum::enum_name(trig) << std::endl;
-    };
+    // constexpr auto traceTransition = [](TestState from, TestEvent trig, TestState to) 
+    // { 
+    //     std::cout << "transition from: " << magic_enum::enum_name(from);
+    //     std::cout << " to: " << magic_enum::enum_name(to);
+    //     std::cout << ", trigger: " << magic_enum::enum_name(trig) << std::endl;
+    // };
 
-    using TestIdleState = State<TestState::TestIdle, TestIdle>;
-    using TestActiveState = State<TestState::TestActive, TestActive>;
-    using TestRunningState = State<TestState::TestRunning, TestRunning>;
-    using TestPausedState = State<TestState::TestPaused, TestPaused>;
+    // using TestIdleState = State<TestState::TestIdle, TestIdle>;
+    // using TestActiveState = State<TestState::TestActive, TestActive>;
+    // using TestRunningState = State<TestState::TestRunning, TestRunning>;
+    // using TestPausedState = State<TestState::TestPaused, TestPaused>;
 
-    using TestStates = States<
-        TestIdleState,
-        TestActiveState,
-        TestRunningState,
-        TestPausedState
-    >;
+    
 
-    using TestTransitions = StateTransitions<
-        StateTransition<TestIdleState, TestEvent::Btn1, TestActiveState, traceTransition>,
-        StateTransition<TestActiveState, TestEvent::Btn2, TestIdleState, traceTransition>
-    >;
-
-    using StateHierarchy = std::tuple<
-         SubstateGroup<TestActiveState, TestRunningState, TestPausedState>
-    >;
-
-    StateMachine<TestStates, TestEvent, TestTransitions, StateHierarchy> testStateMachine;
-
-    size_t i = 0;
-    while(true) {
-        testStateMachine.update();
-        if (i++ == 10) {
-            testStateMachine.sendEvent(TestEvent::Btn1);
-        }
-        if (i == 20){
-            testStateMachine.sendEvent(TestEvent::Btn2);
-        }
-        if (i == 30){
-            break;
-        }
-    }
+    // size_t i = 0;
+    // while(true) {
+    //     testStateMachine.update();
+    //     if (i++ == 10) {
+    //         testStateMachine.sendEvent(TestEvent::Btn1);
+    //     }
+    //     if (i == 20){
+    //         testStateMachine.sendEvent(TestEvent::Btn2);
+    //     }
+    //     if (i == 30){
+    //         break;
+    //     }
+    // }
 
     return 0;
 }
