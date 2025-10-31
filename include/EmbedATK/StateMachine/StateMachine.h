@@ -214,7 +214,7 @@ namespace detail {
             (
                 is_type_in_tuple_v<typename Transitions::OldState, StatesTuple> &&
                 is_type_in_tuple_v<typename Transitions::NewState, StatesTuple> &&
-                std::is_same_v<decltype(Transitions::TRIG), EventsEnum>
+                std::is_same_v<std::decay_t<decltype(Transitions::TRIG)>, EventsEnum>
             ) 
             && ...
         );
