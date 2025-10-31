@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Memory.h"
-#include "Concepts.h"
+
+#include "EmbedATK/Core/Concepts.h"
 
 //------------------------------------------------------
 //                   Polymorphic

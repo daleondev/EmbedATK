@@ -8,16 +8,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(GTest)
 
 # --- Define Tests ---
-add_executable(mempp_tests 
-    ${CMAKE_CURRENT_SOURCE_DIR}/mempp_tests.cpp
+add_executable(eatk_tests 
+    ${CMAKE_CURRENT_SOURCE_DIR}/eatk_tests.cpp
 )
-target_link_libraries(mempp_tests
+target_link_libraries(eatk_tests
     PRIVATE
         GTest::gtest_main
         GTest::gmock
-        Mempp::Mempp
+        EmbedATK::EmbedATK
 )
-target_compile_options(mempp_tests
+target_compile_options(eatk_tests
     PRIVATE
         -Wno-unused-result
         -Wno-nonnull
@@ -26,4 +26,4 @@ target_compile_options(mempp_tests
 # --- Register with CTest ---
 enable_testing()
 include(GoogleTest)
-gtest_discover_tests(mempp_tests)
+gtest_discover_tests(eatk_tests)

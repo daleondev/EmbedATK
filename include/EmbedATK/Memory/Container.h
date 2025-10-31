@@ -7,23 +7,6 @@
 //                      Iterators
 //------------------------------------------------------
 
-// Containers
-#include <tuple>
-#include <vector>
-#include <list>
-#include <deque>
-#include <string>
-#include <array>
-#include <forward_list>
-#include <set>
-#include <map>
-#include <unordered_set>
-#include <unordered_map>
-#include <span>
-#include <iterator>
-#include <filesystem>
-#include <regex>
-
 using AllIterators = std::tuple<
     // --- Container Iterators ---
     std::vector<int>::iterator,

@@ -1,9 +1,9 @@
-add_executable(mempp_sample 
-    ${CMAKE_CURRENT_SOURCE_DIR}/mempp_sample.cpp
+add_executable(eatk_sample 
+    ${CMAKE_CURRENT_SOURCE_DIR}/eatk_sample.cpp
 )
-target_link_libraries(mempp_sample
+target_link_libraries(eatk_sample
     PRIVATE
-        Mempp::Mempp
+        EmbedATK::EmbedATK
 )
 
 # add_executable(statemachine_sample 
@@ -11,5 +11,5 @@ target_link_libraries(mempp_sample
 # )
 # target_link_libraries(statemachine_sample
 #     PRIVATE
-#         Mempp::Mempp
+#         EmbedATK::EmbedATK
 # )

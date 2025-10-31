@@ -1,15 +1,7 @@
 #pragma once
 
-#include "Concepts.h"
-#include "Container.h"
-
-#include <reflect>
-#include <optional>
-#include <deque>
-#include <type_traits>
-#include <magic_enum/magic_enum_switch.hpp>
-#include <ranges>
-#include <algorithm>
+#include "EmbedATK/Core/Concepts.h"
+#include "EmbedATK/Memory/Container.h"
 
 
 // ------------------------------------------------------
