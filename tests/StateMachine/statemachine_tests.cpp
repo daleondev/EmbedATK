@@ -53,117 +53,106 @@ std::vector<OnActiveCall> g_on_active_log;
 
 // --- State Implementations ---
 
-class Operational : public IState<TestState> {
+class Operational : public IState<TestState::Operational> {
 public:
     void onEntry() override { g_log.push_back("Enter Operational"); }
-    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Operational, {subStates, subStates + numSubStates}}); }
+    void onActive(IdType* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Operational, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Operational"); }
 };
 
-class Maintenance : public IState<TestState> {
+class Maintenance : public IState<TestState::Maintenance> {
 public:
     void onEntry() override { g_log.push_back("Enter Maintenance"); }
-    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Maintenance, {subStates, subStates + numSubStates}}); }
+    void onActive(IdType* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Maintenance, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Maintenance"); }
 };
 
-class Idle : public IState<TestState> {
+class Idle : public IState<TestState::Idle> {
 public:
     void onEntry() override { g_log.push_back("Enter Idle"); }
-    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Idle, {subStates, subStates + numSubStates}}); }
+    void onActive(IdType* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Idle, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Idle"); }
 };
 
-class Running : public IState<TestState> {
+class Running : public IState<TestState::Running> {
 public:
     void onEntry() override { g_log.push_back("Enter Running"); }
-    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Running, {subStates, subStates + numSubStates}}); }
+    void onActive(IdType* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Running, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Running"); }
 };
 
-class Running_Sub1 : public IState<TestState> {
+class Running_Sub1 : public IState<TestState::Running_Sub1> {
 public:
     void onEntry() override { g_log.push_back("Enter Running_Sub1"); }
-    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Running_Sub1, {subStates, subStates + numSubStates}}); }
+    void onActive(IdType* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Running_Sub1, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Running_Sub1"); }
 };
 
-class Running_Sub2 : public IState<TestState> {
+class Running_Sub2 : public IState<TestState::Running_Sub2> {
 public:
     void onEntry() override { g_log.push_back("Enter Running_Sub2"); }
-    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Running_Sub2, {subStates, subStates + numSubStates}}); }
+    void onActive(IdType* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::Running_Sub2, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit Running_Sub2"); }
 };
 
-class SelfCheck : public IState<TestState> {
+class SelfCheck : public IState<TestState::SelfCheck> {
 public:
     void onEntry() override { g_log.push_back("Enter SelfCheck"); }
-    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::SelfCheck, {subStates, subStates + numSubStates}}); }
+    void onActive(IdType* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::SelfCheck, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit SelfCheck"); }
 };
 
-class FirmwareUpdate : public IState<TestState> {
+class FirmwareUpdate : public IState<TestState::FirmwareUpdate> {
 public:
     void onEntry() override { g_log.push_back("Enter FirmwareUpdate"); }
-    void onActive(TestState* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::FirmwareUpdate, {subStates, subStates + numSubStates}}); }
+    void onActive(IdType* subStates, size_t numSubStates) override { g_on_active_log.push_back({TestState::FirmwareUpdate, {subStates, subStates + numSubStates}}); }
     void onExit() override { g_log.push_back("Exit FirmwareUpdate"); }
 };
 
-
-// --- Type Aliases ---
-using OperationalState    = State<TestState::Operational, Operational>;
-using MaintenanceState    = State<TestState::Maintenance, Maintenance>;
-using IdleState           = State<TestState::Idle, Idle>;
-using RunningState        = State<TestState::Running, Running>;
-using Running_Sub1State   = State<TestState::Running_Sub1, Running_Sub1>;
-using Running_Sub2State   = State<TestState::Running_Sub2, Running_Sub2>;
-using SelfCheckState      = State<TestState::SelfCheck, SelfCheck>;
-using FirmwareUpdateState = State<TestState::FirmwareUpdate, FirmwareUpdate>;
-
 // --- States Container ---
 using TestHSMStates = States<
-    OperationalState,
-    MaintenanceState,
-    IdleState,
-    RunningState,
-    Running_Sub1State,
-    Running_Sub2State,
-    SelfCheckState,
-    FirmwareUpdateState
+    Operational,
+    Maintenance,
+    Idle,
+    Running,
+    Running_Sub1,
+    Running_Sub2,
+    SelfCheck,
+    FirmwareUpdate
 >;
 
 // --- States Container (with substate as default) ---
 using TestHSMStates_SubstateDefault = States<
-    IdleState, // Default is now IdleState
-    OperationalState,
-    MaintenanceState,
-    RunningState,
-    Running_Sub1State,
-    Running_Sub2State,
-    SelfCheckState,
-    FirmwareUpdateState
+    Idle, // Default is now IdleState
+    Operational,
+    Maintenance,
+    Running,
+    Running_Sub1,
+    Running_Sub2,
+    SelfCheck,
+    FirmwareUpdate
 >;
 
 // --- Transitions ---
 using TestHSMTransitions = StateTransitions<
     // Transitions within Operational
-    StateTransition<IdleState, TestEvent::Run, Running_Sub1State>,
-    StateTransition<RunningState, TestEvent::Pause, IdleState>,
-    StateTransition<Running_Sub1State, TestEvent::Stop, Running_Sub2State>,
+    StateTransition<Idle, TestEvent::Run, Running_Sub1>,
+    StateTransition<Running, TestEvent::Pause, Idle>,
+    StateTransition<Running_Sub1, TestEvent::Stop, Running_Sub2>,
 
     // Transitions between super states
-    StateTransition<OperationalState, TestEvent::GoToMaint, SelfCheckState>,
-    StateTransition<MaintenanceState, TestEvent::MaintFinished, IdleState>,
+    StateTransition<Operational, TestEvent::GoToMaint, SelfCheck>,
+    StateTransition<Maintenance, TestEvent::MaintFinished, Idle>,
 
     // Transitions within Maintenance
-    StateTransition<SelfCheckState, TestEvent::UpdateFirmware, FirmwareUpdateState>
+    StateTransition<SelfCheck, TestEvent::UpdateFirmware, FirmwareUpdate>
 >;
 
 // --- Hierarchy ---
 using TestHSMHierarchy = StateHierarchy<
-    SubstateGroup<OperationalState, IdleState, RunningState>,
-    SubstateGroup<RunningState, Running_Sub1State, Running_Sub2State>,
-    SubstateGroup<MaintenanceState, SelfCheckState, FirmwareUpdateState>
+    SubstateGroup<Operational, Idle, Running>,
+    SubstateGroup<Running, Running_Sub1, Running_Sub2>,
+    SubstateGroup<Maintenance, SelfCheck, FirmwareUpdate>
 >;
 
 // --- Test Fixture ---
