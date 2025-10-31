@@ -1,10 +1,14 @@
-#pragma once
-
 #include "EmbedATK/EmbedATK.h"
+
 #include <gtest/gtest.h>
-#include <iostream>
-#include <vector>
-#include <string>
+#include <gmock/gmock.h>
+
+int main(int argc, char* argv[])
+{
+    ::testing::InitGoogleTest(&argc, argv);
+
+    return RUN_ALL_TESTS();
+}
 
 // For logging state transitions in tests
 std::vector<std::string> g_log;

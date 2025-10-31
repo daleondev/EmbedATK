@@ -1,9 +1,14 @@
-#pragma once
-
 #include "EmbedATK/EmbedATK.h"
 
 #include <gtest/gtest.h>
-#include <array>
+#include <gmock/gmock.h>
+
+int main(int argc, char* argv[])
+{
+    ::testing::InitGoogleTest(&argc, argv);
+
+    return RUN_ALL_TESTS();
+}
 
 //------------------------------------------------------
 //                      AllocData
@@ -543,3 +548,6 @@ TEST(StaticMonotonicPoolTest, DeallocationIsNoOp)
 
 	pool.deallocate(p1, sizeof(int), alignof(int));
 }
+
+#include "polymorphic_tests.h"
+#include "containers_tests.h"
