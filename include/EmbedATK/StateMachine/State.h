@@ -9,6 +9,7 @@ class IState
 public:
     using IdType = decltype(StateId);
     inline static constexpr IdType ID = StateId;
+    inline static constexpr std::string_view NAME = magic_enum::enum_name<StateId>();
 
     virtual ~IState() = default;
     

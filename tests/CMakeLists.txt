@@ -7,6 +7,17 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(GTest)
 
+# --- OSAL Tests ---
+add_executable(osal_tests 
+    ${CMAKE_CURRENT_SOURCE_DIR}/OSAL/osal_tests.cpp
+)
+target_link_libraries(osal_tests
+    PRIVATE
+        GTest::gtest_main
+        GTest::gmock
+        EmbedATK::EmbedATK
+)
+
 # --- Memory Tests ---
 add_executable(memory_tests 
     ${CMAKE_CURRENT_SOURCE_DIR}/Memory/memory_tests.cpp

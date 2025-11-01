@@ -112,6 +112,7 @@
         "*.md": "cpp",
         "future": "cpp",
         "print": "cpp",
-        "__functional_03": "cpp"
+        "__functional_03": "cpp",
+        "__mutex_base": "cpp"
     }
 }
