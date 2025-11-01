@@ -216,7 +216,7 @@
 
         void loggingTask()
         {
-            StaticQueue<LogData*, 64> localQueue;
+            StaticQueue<LogData*, 32> localQueue;
 
             m_running = true;
             while (m_running || !m_queue.get()->empty()) {
@@ -239,7 +239,6 @@
         std::atomic_bool m_running;
         OSAL_THREAD m_thread;
         OSAL_MESSAGE_QUEUE(LogData*, MSG_QUEUE_SIZE) m_queue;
-
         StaticBlockPool<MSG_QUEUE_SIZE, allocData<LogData>()> m_msgPool;
     };
 

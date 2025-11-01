@@ -174,7 +174,13 @@ bool StdMessageQueue<T, N>::popAvail(IQueue<T>& data)
             return false;
     }
 
-    m_queue.swap(data);
+    if (data.capacity() >= m_queue.size()) {
+        m_queue.swap(data);
+    }
+    else {
+        data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.begin()+data.capacity()));
+        m_queue.erase(0, data.capacity());
+    }
     return true;
 }
 template <typename T, size_t N>
@@ -190,7 +196,13 @@ bool StdMessageQueue<T, N>::tryPopAvail(IQueue<T>& data)
     if (m_queue.empty())
         return false;
 
-    m_queue.swap(data);
+    if (data.capacity() >= m_queue.size()) {
+        m_queue.swap(data);
+    }
+    else {
+        data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.begin()+data.capacity()));
+        m_queue.erase(0, data.capacity());
+    }
     return true;
 }
 

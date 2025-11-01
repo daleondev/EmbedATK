@@ -1003,6 +1003,10 @@ public:
     virtual std::optional<ValueType> pop() = 0;
     virtual Iterator insert(ConstIterator pos, Iterator first, Iterator last) = 0;
     virtual Iterator insert(ConstIterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) = 0;
+    virtual Iterator erase(size_t index) = 0;
+    virtual Iterator erase(size_t index, size_t count) = 0;
+    virtual Iterator erase(ConstIterator pos) = 0;
+    virtual Iterator erase(ConstIterator first, ConstIterator last) = 0;
 
     void swap(IQueue<ValueType>& other) 
     { 
@@ -1184,6 +1188,29 @@ public:
         return Iterator(m_queue.insert(begin()+index, first, last));
     }
 
+    Iterator erase(size_t index) override 
+    {
+        return Iterator(m_queue.erase(m_queue.begin()+index));
+    }
+
+    Iterator erase(size_t index, size_t count) override 
+    {
+        return Iterator(m_queue.erase(m_queue.begin()+index, m_queue.begin()+index+count));
+    }
+
+    Iterator erase(ConstIterator pos) override 
+    {
+        const auto index = std::distance(ConstIterator(begin()), pos);
+        return erase(index);
+    }
+
+    Iterator erase(ConstIterator first, ConstIterator last) override 
+    {
+        const auto index = std::distance(ConstIterator(begin()), first);
+        const auto count = std::distance(first, last);
+        return erase(index, count);
+    }
+
     template<class... Args>
     OptionalRef emplace(Args&&... args)
     {
@@ -1347,8 +1374,6 @@ public:
     // ----------------------------------------
     // --- data access
     // ----------------------------------------
-    constexpr ValueType* data() noexcept { return reinterpret_cast<ValueType*>(m_store.data()); }
-    constexpr const ValueType* data() const noexcept { return reinterpret_cast<const ValueType*>(m_store.data()); }
     ValueType& operator[](size_t index) override { return data()[(m_head + index) % N]; }
     const ValueType& operator[](size_t index) const override { return data()[(m_head + index) % N]; }
 
@@ -1563,6 +1588,47 @@ public:
         return mutPos;
     }
 
+    Iterator erase(size_t index) override
+    {
+        if (index >= m_size) throw std::out_of_range("index exceeds vector size");
+        std::destroy_at(&(*this)[index]);
+        std::ranges::move(*this | std::views::drop(index+1), begin()+index);
+        
+        m_size--;
+        m_tail = (m_head + m_size) % N;
+
+        auto it = begin();
+        std::advance(it, index);
+        return it;
+    }
+
+    Iterator erase(size_t index, size_t count) override
+    {
+        if (index >= m_size) throw std::out_of_range("index exceeds vector size");
+        std::ranges::destroy(*this | std::views::drop(index) | std::views::take(count));
+        std::ranges::move(*this | std::views::drop(index+count), begin()+index);
+
+        m_size -= count;
+        m_tail = (m_head + m_size) % N;
+
+        auto it = begin();
+        std::advance(it, index);
+        return it;
+    }
+
+    Iterator erase(ConstIterator pos) override
+    {
+        const auto index = std::distance(ConstIterator(begin()), pos);
+        return erase(index);
+    }
+
+    Iterator erase(ConstIterator first, ConstIterator last) override
+    {
+        const auto index = std::distance(ConstIterator(begin()), first);
+        const auto count = std::distance(first, last);
+        return erase(index, count);
+    }
+
     template<class... Args>
     OptionalRef emplace(Args&&... args)
     {
@@ -1574,6 +1640,9 @@ public:
     }
 
 private:
+    constexpr ValueType* data() noexcept { return reinterpret_cast<ValueType*>(m_store.data()); }
+    constexpr const ValueType* data() const noexcept { return reinterpret_cast<const ValueType*>(m_store.data()); }
+
     // ----------------------------------------
     // --- data
     // ----------------------------------------
