@@ -13,6 +13,7 @@
 #include <memory>
 #include <utility>
 #include <iostream>
+#include <cstring>
 
 // Containers
 #include <tuple>

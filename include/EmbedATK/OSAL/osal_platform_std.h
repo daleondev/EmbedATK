@@ -60,12 +60,12 @@ private:
     bool empty() const override;
     bool push(const T& msg) override;
     bool push(T&& msg) override;
-    bool pushMany(const IStaticQueue<T>& data) override;
-    bool pushMany(IStaticQueue<T>&& data) override;
+    bool pushMany(const IQueue<T>& data) override;
+    bool pushMany(IQueue<T>&& data) override;
     std::optional<T> pop() override;
-    bool popAvail(IStaticQueue<T>& data) override;
+    bool popAvail(IQueue<T>& data) override;
     std::optional<T> tryPop() override;
-    bool tryPopAvail(IStaticQueue<T>& data) override;
+    bool tryPopAvail(IQueue<T>& data) override;
     
     mutable std::mutex m_mutex;
     std::condition_variable m_condition;

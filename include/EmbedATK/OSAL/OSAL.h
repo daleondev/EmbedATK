@@ -130,12 +130,12 @@ public:
         virtual bool empty() const = 0;
         virtual bool push(const T& msg) = 0;
         virtual bool push(T&& msg) = 0;
-        virtual bool pushMany(const IStaticQueue<T>& data) = 0;
-        virtual bool pushMany(IStaticQueue<T>&& data) = 0;
+        virtual bool pushMany(const IQueue<T>& data) = 0;
+        virtual bool pushMany(IQueue<T>&& data) = 0;
         virtual std::optional<T> pop() = 0;
-        virtual bool popAvail(IStaticQueue<T>& data) = 0;
+        virtual bool popAvail(IQueue<T>& data) = 0;
         virtual std::optional<T> tryPop() = 0;
-        virtual bool tryPopAvail(IStaticQueue<T>& data) = 0;
+        virtual bool tryPopAvail(IQueue<T>& data) = 0;
     };
     template <typename T, size_t N>
     struct MessageQueueImpl;

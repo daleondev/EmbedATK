@@ -105,7 +105,7 @@ bool StdMessageQueue<T, N>::push(T&& msg)
     }
 }
 template <typename T, size_t N>
-bool StdMessageQueue<T, N>::pushMany(const IStaticQueue<T>& data)
+bool StdMessageQueue<T, N>::pushMany(const IQueue<T>& data)
 {
     if constexpr (std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T>) {
         {
@@ -128,7 +128,7 @@ bool StdMessageQueue<T, N>::pushMany(const IStaticQueue<T>& data)
     }
 }
 template <typename T, size_t N>
-bool StdMessageQueue<T, N>::pushMany(IStaticQueue<T>&& data)
+bool StdMessageQueue<T, N>::pushMany(IQueue<T>&& data)
 {
     if constexpr (std::is_move_constructible_v<T> && std::is_move_assignable_v<T>) {
         {
@@ -164,7 +164,7 @@ std::optional<T> StdMessageQueue<T, N>::pop()
     return m_queue.pop();
 }
 template <typename T, size_t N>
-bool StdMessageQueue<T, N>::popAvail(IStaticQueue<T>& data)
+bool StdMessageQueue<T, N>::popAvail(IQueue<T>& data)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
@@ -184,7 +184,7 @@ std::optional<T> StdMessageQueue<T, N>::tryPop()
     return m_queue.pop();
 }
 template <typename T, size_t N>
-bool StdMessageQueue<T, N>::tryPopAvail(IStaticQueue<T>& data)
+bool StdMessageQueue<T, N>::tryPopAvail(IQueue<T>& data)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
     if (m_queue.empty())
