@@ -234,11 +234,11 @@ TEST_F(ContainersTest, StaticVector_MoveOperations)
 }
 
 //------------------------------------------------------
-//                      StaticQueue
+//                      StaticStdQueue
 //------------------------------------------------------
 TEST_F(ContainersTest, StaticQueue_Lifecycle)
 {
-	StaticQueue<int, 3> q;
+	StaticStdQueue<int, 3> q;
 	EXPECT_TRUE(q.empty());
 	EXPECT_EQ(q.size(), 0);
 	EXPECT_EQ(q.capacity(), 3);
@@ -269,7 +269,7 @@ TEST_F(ContainersTest, StaticQueue_Lifecycle)
 
 TEST_F(ContainersTest, StaticQueue_CircularBehavior)
 {
-	StaticQueue<int, 3> q;
+	StaticStdQueue<int, 3> q;
 	q.push(1);
 	q.push(2);
 	q.pop(); // head is now at index 1
@@ -292,7 +292,7 @@ TEST_F(ContainersTest, StaticQueue_CircularBehavior)
 TEST_F(ContainersTest, StaticQueue_WithTestCounter)
 {
 	{
-		StaticQueue<TestCounter, 5> q;
+		StaticStdQueue<TestCounter, 5> q;
 		q.emplace(1);
 		q.push(TestCounter(2));
 		TestCounter tmp(3);
@@ -315,7 +315,7 @@ TEST_F(ContainersTest, StaticQueue_WithTestCounter)
 
 TEST_F(ContainersTest, StaticQueue_CopyOperations_NoWrap)
 {
-	StaticQueue<TestCounter, 5> original;
+	StaticStdQueue<TestCounter, 5> original;
 	original.emplace(1);
 	original.emplace(2);
 	original.emplace(3);
@@ -323,7 +323,7 @@ TEST_F(ContainersTest, StaticQueue_CopyOperations_NoWrap)
 
 	// Test Copy Constructor
 	{
-		StaticQueue<TestCounter, 5> copy = original;
+		StaticStdQueue<TestCounter, 5> copy = original;
 		EXPECT_EQ(TestCounter::constructions, 3);
 		EXPECT_EQ(TestCounter::copies, 3);
 		EXPECT_EQ(TestCounter::moves, 0);
@@ -338,7 +338,7 @@ TEST_F(ContainersTest, StaticQueue_CopyOperations_NoWrap)
 
 	// Test Copy Assignment
 	{
-		StaticQueue<TestCounter, 5> target;
+		StaticStdQueue<TestCounter, 5> target;
 		target.push(100);
 		TestCounter::reset();
 
@@ -357,7 +357,7 @@ TEST_F(ContainersTest, StaticQueue_CopyOperations_NoWrap)
 
 TEST_F(ContainersTest, StaticQueue_CopyOperations_WithWrap)
 {
-	StaticQueue<TestCounter, 4> original;
+	StaticStdQueue<TestCounter, 4> original;
 	original.emplace(1);
 	original.emplace(2);
 	original.emplace(3);
@@ -370,7 +370,7 @@ TEST_F(ContainersTest, StaticQueue_CopyOperations_WithWrap)
 
 	// Test Copy Constructor
 	{
-		StaticQueue<TestCounter, 4> copy = original;
+		StaticStdQueue<TestCounter, 4> copy = original;
 		EXPECT_EQ(TestCounter::constructions, 4);
 		EXPECT_EQ(TestCounter::copies, 4);
 		EXPECT_EQ(TestCounter::moves, 0);
@@ -386,7 +386,7 @@ TEST_F(ContainersTest, StaticQueue_CopyOperations_WithWrap)
 
 	// Test Copy Assignment
 	{
-		StaticQueue<TestCounter, 4> target;
+		StaticStdQueue<TestCounter, 4> target;
 		target.push(100);
 		TestCounter::reset();
 
@@ -407,13 +407,13 @@ TEST_F(ContainersTest, StaticQueue_MoveOperations_NoWrap)
 {
 	// Test Move Constructor
 	{
-		StaticQueue<TestCounter, 5> original;
+		StaticStdQueue<TestCounter, 5> original;
 		original.emplace(1);
 		original.emplace(2);
 		original.emplace(3);
 		TestCounter::reset();
 
-		StaticQueue<TestCounter, 5> moved = std::move(original);
+		StaticStdQueue<TestCounter, 5> moved = std::move(original);
 		EXPECT_EQ(TestCounter::constructions, 3);
 		EXPECT_EQ(TestCounter::copies, 0);
 		EXPECT_EQ(TestCounter::moves, 3);
@@ -427,11 +427,11 @@ TEST_F(ContainersTest, StaticQueue_MoveOperations_NoWrap)
 
 	// Test Move Assignment
 	{
-		StaticQueue<TestCounter, 5> original;
+		StaticStdQueue<TestCounter, 5> original;
 		original.emplace(1);
 		original.emplace(2);
 		original.emplace(3);
-		StaticQueue<TestCounter, 5> target;
+		StaticStdQueue<TestCounter, 5> target;
 		target.emplace(100);
 		TestCounter::reset();
 
@@ -450,7 +450,7 @@ TEST_F(ContainersTest, StaticQueue_MoveOperations_WithWrap)
 {
 	// Test Move Constructor
 	{
-		StaticQueue<TestCounter, 5> original;
+		StaticStdQueue<TestCounter, 5> original;
 		original.emplace(1);
 		original.emplace(2);
 		original.pop();
@@ -459,7 +459,7 @@ TEST_F(ContainersTest, StaticQueue_MoveOperations_WithWrap)
 		original.emplace(5); // queue is {2, 3, 4, 5} wrapped
 		TestCounter::reset();
 
-		StaticQueue<TestCounter, 5> moved = std::move(original);
+		StaticStdQueue<TestCounter, 5> moved = std::move(original);
 		EXPECT_EQ(TestCounter::constructions, 4);
 		EXPECT_EQ(TestCounter::copies, 0);
 		EXPECT_EQ(TestCounter::moves, 4);
@@ -474,12 +474,12 @@ TEST_F(ContainersTest, StaticQueue_MoveOperations_WithWrap)
 
 	// Test Move Assignment
 	{
-		StaticQueue<TestCounter, 5> original;
+		StaticStdQueue<TestCounter, 5> original;
 		original.emplace(1);
 		original.emplace(2);
 		original.pop();
 		original.emplace(3); // queue is {2, 3} wrapped
-		StaticQueue<TestCounter, 5> target;
+		StaticStdQueue<TestCounter, 5> target;
 		target.emplace(100);
 		TestCounter::reset();
 
@@ -497,11 +497,11 @@ TEST_F(ContainersTest, StaticQueue_MoveOperations_WithWrap)
 
 TEST_F(ContainersTest, StaticQueue_Swap_NoWrap)
 {
-	StaticQueue<int, 5> q1;
+	StaticStdQueue<int, 5> q1;
 	q1.push(1);
 	q1.push(2);
 
-	StaticQueue<int, 5> q2;
+	StaticStdQueue<int, 5> q2;
 	q2.push(10);
 	q2.push(20);
 	q2.push(30);
@@ -521,7 +521,7 @@ TEST_F(ContainersTest, StaticQueue_Swap_NoWrap)
 
 TEST_F(ContainersTest, StaticQueue_Swap_WithWrap)
 {
-	StaticQueue<int, 4> q1;
+	StaticStdQueue<int, 4> q1;
 	q1.push(1);
 	q1.push(2);
 	q1.push(3);
@@ -531,7 +531,7 @@ TEST_F(ContainersTest, StaticQueue_Swap_WithWrap)
 	q1.push(5);
 	q1.push(6);
 
-	StaticQueue<int, 5> q2;
+	StaticStdQueue<int, 5> q2;
 	q2.push(10);
 	q2.push(20);
 
@@ -551,11 +551,11 @@ TEST_F(ContainersTest, StaticQueue_Swap_WithWrap)
 
 TEST_F(ContainersTest, StaticQueue_Swap_DifferentCapacity)
 {
-	StaticQueue<int, 5> q1;
+	StaticStdQueue<int, 5> q1;
 	q1.push(1);
 	q1.push(2);
 
-	StaticQueue<int, 3> q2;
+	StaticStdQueue<int, 3> q2;
 	q2.push(10);
 	q2.push(20);
 	q2.push(30);
@@ -575,10 +575,10 @@ TEST_F(ContainersTest, StaticQueue_Swap_DifferentCapacity)
 
 TEST_F(ContainersTest, StaticQueue_Swap_Throws)
 {
-	StaticQueue<int, 2> q1;
+	StaticStdQueue<int, 2> q1;
 	q1.push(1);
 
-	StaticQueue<int, 5> q2;
+	StaticStdQueue<int, 5> q2;
 	q2.push(10);
 	q2.push(20);
 	q2.push(30);
@@ -589,7 +589,7 @@ TEST_F(ContainersTest, StaticQueue_Swap_Throws)
 
 TEST_F(ContainersTest, StaticQueue_InsertCopy_WithWrap)
 {
-	StaticQueue<int, 5> q1;
+	StaticStdQueue<int, 5> q1;
 	q1.push(0);
 	q1.push(0);
 	q1.pop();
@@ -597,7 +597,7 @@ TEST_F(ContainersTest, StaticQueue_InsertCopy_WithWrap)
 	q1.push(1);
 	q1.push(2);
 
-	StaticQueue<int, 3> q2;
+	StaticStdQueue<int, 3> q2;
 	q2.push(10);
 	q2.push(20);
 	q2.push(30);
@@ -620,12 +620,12 @@ TEST_F(ContainersTest, StaticQueue_InsertCopy_WithWrap)
 
 TEST_F(ContainersTest, StaticQueue_InsertCopy_Throws)
 {
-	StaticQueue<int, 5> q1;
+	StaticStdQueue<int, 5> q1;
 	q1.push(1);
 	q1.push(2);
 	q1.push(3);
 
-	StaticQueue<int, 5> q2;
+	StaticStdQueue<int, 5> q2;
 	q2.push(10);
 	q2.push(20);
 	q2.push(30);
@@ -635,11 +635,11 @@ TEST_F(ContainersTest, StaticQueue_InsertCopy_Throws)
 
 TEST_F(ContainersTest, StaticQueue_InsertMove_NoWrap)
 {
-	StaticQueue<int, 5> q1;
+	StaticStdQueue<int, 5> q1;
 	q1.push(1);
 	q1.push(2);
 
-	StaticQueue<int, 5> q2;
+	StaticStdQueue<int, 5> q2;
 	q2.push(10);
 	q2.push(20);
 

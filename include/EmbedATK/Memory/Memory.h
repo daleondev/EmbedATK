@@ -461,7 +461,7 @@ private:
     FreeBlock* m_freeBlocks;
 };
 
-template<size_t N, AllocData Alloc>
+template<typename T, size_t N>
 class StaticEntiredPool : public IPool
 {
 public:
@@ -512,6 +512,7 @@ private:
     }
 
 private:
+    static constexpr AllocData Alloc = allocData<T>();
     StaticBuffer<Alloc.size*N, Alloc.align> m_buff;
 };
 

@@ -577,26 +577,10 @@ public:
         m_vector = other.m_vector;
     }
 
-    StaticStdVector& operator=(const StaticStdVector& other)
-    {
-        if (this != &other) {
-            m_vector = other.m_vector;
-        }
-        return *this;
-    }
-
     StaticStdVector(StaticStdVector&& other) noexcept 
         : m_pool{}, m_vector{&m_pool}
     {
         m_vector = std::move(other.m_vector);
-    }
-
-    StaticStdVector& operator=(StaticStdVector&& other) noexcept
-    {
-        if (this != &other) {
-            m_vector = std::move(other.m_vector);
-        }
-        return *this;
     }
 
     ~StaticStdVector() = default;
@@ -613,9 +597,9 @@ public:
     // --- information
     // ----------------------------------------
     bool empty() const noexcept override { return m_vector.empty(); }
+    bool full() const noexcept override { return m_vector.size() == N; }
     size_t size() const noexcept override { return m_vector.size(); }
-    bool full() const noexcept override { return m_vector.size() == m_vector.capacity(); }
-    size_t capacity() const noexcept override { return m_vector.capacity(); }
+    size_t capacity() const noexcept override { return N; }
     
     // ----------------------------------------
     // --- data access
@@ -630,6 +614,22 @@ public:
     // ----------------------------------------
     // --- manipulation
     // ----------------------------------------
+    StaticStdVector& operator=(const StaticStdVector& other)
+    {
+        if (this != &other) {
+            m_vector = other.m_vector;
+        }
+        return *this;
+    }
+
+    StaticStdVector& operator=(StaticStdVector&& other) noexcept
+    {
+        if (this != &other) {
+            m_vector = std::move(other.m_vector);
+        }
+        return *this;
+    }
+
     void clear() noexcept override { m_vector.clear(); }
     void resize(size_t size) override { m_vector.resize(size); }
     void resize(size_t size, const ValueType& val) override { m_vector.resize(size, val); }
@@ -659,7 +659,7 @@ private:
     // ----------------------------------------
     // --- data
     // ----------------------------------------
-    StaticEntiredPool<N, allocData<ValueType>()> m_pool;
+    StaticEntiredPool<ValueType, N> m_pool;
     std::pmr::vector<ValueType> m_vector;
 };
 
@@ -931,7 +931,7 @@ public:
     // ----------------------------------------
     // --- data access
     // ----------------------------------------
-    virtual std::optional<ValueType> peek() = 0;
+    virtual std::optional<ValueType> peek() const = 0;
 
     // ----------------------------------------
     // --- manipulation
@@ -945,6 +945,158 @@ public:
     virtual void swap(IQueue<ValueType>& other) = 0;
     virtual Iterator insert(Iterator pos, Iterator first, Iterator last) = 0;
     virtual Iterator insert(Iterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) = 0;
+};
+
+template<typename T, size_t N>
+class StaticStdQueue : public IQueue<T>
+{
+public:
+    // ----------------------------------------
+    // --- types
+    // ----------------------------------------
+    using Handle                = IQueue<T>;
+    using ValueType             = Handle::ValueType;
+    using Iterator              = Handle::Iterator;
+    using ConstIterator         = Handle::ConstIterator;
+    using OptionalRef           = Handle::OptionalRef;
+
+    // ----------------------------------------
+    // --- constructors/destructors
+    // ----------------------------------------
+    StaticStdQueue() 
+        : m_pool{}, m_queue{&m_pool}
+    { 
+    }
+    StaticStdQueue(size_t size)
+        : m_pool{}, m_queue{&m_pool}
+    {
+        m_queue.resize(size);
+    }
+    StaticStdQueue(size_t size, const ValueType& val) 
+        : m_pool{}, m_queue{&m_pool}
+    {
+        m_queue.resize(size, val);
+    }
+
+    StaticStdQueue(const StaticStdQueue& other) 
+        : m_pool{}, m_queue{&m_pool}
+    {
+        m_queue = other.m_queue;
+    }
+
+    StaticStdQueue(StaticStdQueue&& other) noexcept 
+        : m_pool{}, m_queue{&m_pool}
+    {
+        m_queue = std::move(other.m_queue);
+    }
+
+    ~StaticStdQueue() = default;
+
+    // ----------------------------------------
+    // --- iterators
+    // ----------------------------------------
+    Iterator begin() override { return Iterator(m_queue.begin()); }
+    ConstIterator begin() const override { return ConstIterator(m_queue.cbegin()); }
+    Iterator end() override { return Iterator(m_queue.end()); }
+    ConstIterator end() const override { return ConstIterator(m_queue.cend()); }
+
+    // ----------------------------------------
+    // --- information
+    // ----------------------------------------
+    bool empty() const noexcept override { return m_queue.empty(); }
+    bool full() const noexcept override { return m_queue.size() == N; }
+    size_t size() const noexcept override { return m_queue.size(); }
+    size_t capacity() const noexcept override { return N; }
+    
+    // ----------------------------------------
+    // --- data access
+    // ----------------------------------------
+    ValueType* data() override { return &m_queue.front(); }
+    const ValueType* data() const override { return &m_queue.front(); }
+    ValueType& operator[](const size_t i) noexcept override { return m_queue[i]; }
+    const ValueType& operator[](const size_t i) const noexcept override { return m_queue[i]; }
+    ValueType& at(size_t i) override { return m_queue.at(i); }
+    const ValueType& at(size_t i) const override { return m_queue.at(i); }
+
+    std::optional<ValueType> peek() const override
+    { 
+        if (empty()) return std::nullopt;
+        return m_queue.front();
+    }
+    
+    // ----------------------------------------
+    // --- manipulation
+    // ----------------------------------------
+    StaticStdQueue& operator=(const StaticStdQueue& other)
+    {
+        if (this != &other) {
+            m_queue = other.m_queue;
+        }
+        return *this;
+    }
+
+    StaticStdQueue& operator=(StaticStdQueue&& other) noexcept
+    {
+        if (this != &other) {
+            m_queue = std::move(other.m_queue);
+        }
+        return *this;
+    }
+
+    virtual void clear() noexcept override { m_queue.clear(); }
+    virtual void resize(size_t size) override { m_queue.resize(size); }
+    virtual void resize(size_t size, const ValueType& value) override { m_queue.resize(size, value); }
+
+    virtual bool push(const ValueType& value) override 
+    { 
+        if (full()) return false;
+        m_queue.push_back(value); 
+        return true;
+    }
+
+    virtual bool push(ValueType&& value) override 
+    { 
+        if (full()) return false;
+        m_queue.push_back(std::move(value)); 
+        return true; 
+    }
+
+    virtual std::optional<ValueType> pop() override 
+    {  
+        if (empty()) return std::nullopt;
+        ValueType value = std::move(m_queue.front());
+        m_queue.pop_front();
+        return std::move(value);
+    }
+
+    virtual void swap(IQueue<ValueType>& other) override 
+    { 
+
+    }
+
+    virtual Iterator insert(Iterator pos, Iterator first, Iterator last) override 
+    { 
+        return Iterator(m_queue.insert(pos, first, last));
+    }
+
+    virtual Iterator insert(Iterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) override 
+    { 
+        return Iterator(m_queue.insert(pos, first, last));
+    }
+
+    template<class... Args>
+    OptionalRef emplace(Args&&... args)
+    {
+        if (full()) return std::nullopt;
+        return std::ref(m_queue.emplace_back(std::forward<Args...>(args...)));
+    }
+
+private:
+    // ----------------------------------------
+    // --- data
+    // ----------------------------------------
+    StaticDequePool<ValueType, N> m_pool;
+    std::pmr::deque<ValueType> m_queue;
 };
 
 template<typename T, size_t N, bool ClearOnDestroy = true>
@@ -1108,7 +1260,7 @@ public:
         return (*this)[index];
     }
 
-    std::optional<ValueType> peek() override
+    std::optional<ValueType> peek() const override
     {
         if (empty()) return std::nullopt;
         return data()[m_head];
@@ -1229,16 +1381,6 @@ public:
         }
     }
 
-    template<class... Args>
-    OptionalRef emplace(Args&&... args)
-    {
-        if (full()) return std::nullopt;
-        auto constructed = std::construct_at(&data()[m_tail], std::forward<Args>(args)...);
-        m_tail = (m_tail + 1) % N;
-        m_size++;
-        return std::ref(*constructed);
-    }
-
     bool push(const ValueType& value) override
     {
         if (full()) return false;
@@ -1333,6 +1475,16 @@ public:
         m_tail = m_size % N;
         
         return pos;
+    }
+
+    template<class... Args>
+    OptionalRef emplace(Args&&... args)
+    {
+        if (full()) return std::nullopt;
+        auto constructed = std::construct_at(&data()[m_tail], std::forward<Args>(args)...);
+        m_tail = (m_tail + 1) % N;
+        m_size++;
+        return std::ref(*constructed);
     }
 
 private:

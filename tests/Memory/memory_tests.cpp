@@ -458,8 +458,7 @@ TEST(StaticBlockPoolTest, InvalidOperations)
 // --- StaticEntiredPool ---
 TEST(StaticEntiredPoolTest, BasicAllocationDeallocation)
 {
-	constexpr auto alloc = allocData<int>();
-	StaticEntiredPool<10, alloc> pool; // 10 * sizeof(int)
+	StaticEntiredPool<int, 10> pool; // 10 * sizeof(int)
 
 	void* p = pool.allocate(10 * sizeof(int), alignof(int));
 	ASSERT_NE(p, nullptr);
@@ -470,10 +469,10 @@ TEST(StaticEntiredPoolTest, BasicAllocationDeallocation)
 
 TEST(StaticEntiredPoolTest, OverAllocation)
 {
-	constexpr auto alloc = allocData<char>();
-	StaticEntiredPool<10, alloc> pool;
+	StaticEntiredPool<int, 10> pool;
 
 	EXPECT_THROW(pool.allocate(100, 1), std::bad_alloc);
+	auto alloc = allocData<int>();
 	if (alloc.align < 16)
 	{
 		EXPECT_THROW(pool.allocate(80, 16), std::bad_alloc); // bad alignment
@@ -482,8 +481,7 @@ TEST(StaticEntiredPoolTest, OverAllocation)
 
 TEST(StaticEntiredPoolTest, SingleAllocationBehavior)
 {
-	constexpr auto alloc = allocData<uintptr_t>();
-	StaticEntiredPool<10, alloc> pool;
+	StaticEntiredPool<int, 10> pool;
 	const size_t total_size = 10 * sizeof(uintptr_t);
 
 	void* p1 = pool.allocate(total_size, alignof(uintptr_t));
@@ -494,8 +492,7 @@ TEST(StaticEntiredPoolTest, SingleAllocationBehavior)
 
 TEST(StaticEntiredPoolTest, InvalidDeallocation)
 {
-	constexpr auto alloc = allocData<double>();
-	StaticEntiredPool<5, alloc> pool;
+	StaticEntiredPool<int, 5> pool;
 	const size_t total_size = 5 * sizeof(double);
 
 	void* p = pool.allocate(total_size, alignof(double));
