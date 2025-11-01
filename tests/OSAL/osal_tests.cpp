@@ -108,7 +108,7 @@ TEST(OSAL, Mutex)
 TEST(OSAL, Thread)
 {
     std::atomic<bool> executed = false;
-    DynamicPolymorphic<OSAL::Thread> thread;
+    StaticPolymorphicStore<OSAL::Thread, OSAL::threadAllocData()> thread;
     OSAL::createThread(thread, {}, [&]() {
         executed = true;
     });
@@ -124,7 +124,8 @@ TEST(OSAL, CyclicThread)
 {
     std::atomic<int> counter = 0;
     DynamicPolymorphic<OSAL::CyclicThread> cyclicThread;
-    OSAL::createCyclicThread(cyclicThread, {}, [&]() {
+    std::array<std::byte, 16384> stack;
+    OSAL::createCyclicThread(cyclicThread, stack, [&]() {
         counter++;
     });
     ASSERT_TRUE(cyclicThread);

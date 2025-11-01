@@ -166,3 +166,15 @@ private:
     // --- Singleton instance ---
     static const OSAL& instance();
 };
+
+#define OSAL_TIMER              StaticPolymorphicStore<OSAL::Timer, OSAL::timerAllocData()>
+#define OSAL_MUTEX              StaticPolymorphicStore<OSAL::Mutex, OSAL::mutexAllocData()>
+#define OSAL_THREAD             StaticPolymorphicStore<OSAL::Thread, OSAL::threadAllocData()>
+#define OSAL_CYCLIC_THREAD      StaticPolymorphicStore<OSAL::CyclicThread, OSAL::cyclicThreadAllocData()>
+#define OSAL_MESSAGE_QUEUE      StaticPolymorphicStore<OSAL::CyclicThread, OSAL::cyclicThreadAllocData()>
+
+#define OSAL_TIMER_DYN          DynamicPolymorphic<OSAL::Timer>
+#define OSAL_MUTEX_DYN          DynamicPolymorphic<OSAL::Mutex>
+#define OSAL_THREAD_DYN         DynamicPolymorphic<OSAL::Thread>
+#define OSAL_CYCLIC_THREAD_DYN  DynamicPolymorphic<OSAL::CyclicThread>
+#define OSAL_MESSAGE_QUEUE_DYN  DynamicPolymorphic<OSAL::MessageQueue>
