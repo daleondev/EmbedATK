@@ -555,18 +555,20 @@ public:
     // ----------------------------------------
     StaticStdVector() 
         : m_pool{}, m_vector{&m_pool}
-    { 
+    {       
         m_vector.reserve(N); 
     }
     StaticStdVector(size_t size)
         : m_pool{}, m_vector{&m_pool}
     { 
+        if (size > N) throw std::length_error("Initial size exceeds static capacity");
         m_vector.reserve(N); 
         m_vector.resize(size);
     }
     StaticStdVector(size_t size, const ValueType& val) 
         : m_pool{}, m_vector{&m_pool}
     { 
+        if (size > N) throw std::length_error("Initial size exceeds static capacity");
         m_vector.reserve(N); 
         m_vector.resize(size, val);
     }
@@ -581,6 +583,12 @@ public:
         : m_pool{}, m_vector{&m_pool}
     {
         m_vector = std::move(other.m_vector);
+    }
+
+    StaticStdVector(const std::initializer_list<ValueType>& data) 
+        : m_pool{}, m_vector{data, &m_pool}
+    {
+        if (data.size() > N) throw std::length_error("Initial size exceeds static capacity");
     }
 
     ~StaticStdVector() = default;
@@ -631,22 +639,46 @@ public:
     }
 
     void clear() noexcept override { m_vector.clear(); }
-    void resize(size_t size) override { m_vector.resize(size); }
-    void resize(size_t size, const ValueType& val) override { m_vector.resize(size, val); }
-    void push_back(ValueType&& value) override { m_vector.push_back(std::move(value)); }
-    void push_back(const ValueType& value) override { m_vector.push_back(value); }
+
+    void resize(size_t size) override 
+    { 
+        if (size > N) throw std::length_error("vector exceeds static capacity");
+        m_vector.resize(size); 
+    }
+
+    void resize(size_t size, const ValueType& val) override 
+    { 
+        if (size > N) throw std::length_error("vector exceeds static capacity");
+        m_vector.resize(size, val); 
+    }
+
+    void push_back(ValueType&& value) override 
+    { 
+        if (full()) throw std::length_error("vector exceeds static capacity");
+        m_vector.push_back(std::move(value)); 
+    }
+
+    void push_back(const ValueType& value) override 
+    { 
+        if (full()) throw std::length_error("vector exceeds static capacity");
+        m_vector.push_back(value); 
+    }
+
     Iterator erase(size_t index) override 
     {
         return Iterator(m_vector.erase(m_vector.begin()+index));
     }
+
     Iterator erase(size_t index, size_t count) override 
     {
         return Iterator(m_vector.erase(m_vector.begin()+index, m_vector.begin()+index+count));
     }
+
     Iterator erase(ConstIterator pos) override 
     {
         return Iterator(m_vector.erase(pos));
     }
+
     Iterator erase(ConstIterator first, ConstIterator last) override 
     {
         return Iterator(m_vector.erase(first, last));
@@ -681,8 +713,6 @@ public:
     using ValueType             = Handle::ValueType;
     using Iterator              = Handle::Iterator;
     using ConstIterator         = Handle::ConstIterator;
-    using InternalIterator      = std::span<T>::iterator;
-    using InternalConstIterator = std::span<const T>::iterator;
 
     // ----------------------------------------
     // --- constructors/destructors
@@ -714,6 +744,7 @@ public:
 
     StaticVector(const std::initializer_list<ValueType>& data) : m_store{}, m_size{ data.size() }
     {
+        if (data.size() > N) throw std::length_error("Initial size exceeds static capacity");
         std::uninitialized_move(data.begin(), data.end(), begin());
     }
 
@@ -870,14 +901,14 @@ public:
 
     Iterator erase(ConstIterator pos) override
     {
-        const auto index = std::distance(static_cast<InternalConstIterator>(begin()), static_cast<InternalConstIterator>(pos));
+        const auto index = std::distance(begin(), pos);
         return erase(index);
     }
 
     Iterator erase(ConstIterator first, ConstIterator last) override
     {
-        const auto index = std::distance(static_cast<InternalConstIterator>(begin()), static_cast<InternalConstIterator>(first));
-        const auto count = std::distance(static_cast<InternalConstIterator>(first), static_cast<InternalConstIterator>(last));
+        const auto index = std::distance(begin(), first);
+        const auto count = std::distance(first, last);
         return erase(index, count);
     }
 
@@ -989,11 +1020,13 @@ public:
     StaticStdQueue(size_t size)
         : m_pool{}, m_queue{&m_pool}
     {
+        if (size > N) throw std::length_error("queue exceeds static capacity");
         m_queue.resize(size);
     }
     StaticStdQueue(size_t size, const ValueType& val) 
         : m_pool{}, m_queue{&m_pool}
     {
+        if (size > N) throw std::length_error("queue exceeds static capacity");
         m_queue.resize(size, val);
     }
 
@@ -1064,8 +1097,18 @@ public:
     }
 
     virtual void clear() noexcept override { m_queue.clear(); }
-    virtual void resize(size_t size) override { m_queue.resize(size); }
-    virtual void resize(size_t size, const ValueType& value) override { m_queue.resize(size, value); }
+
+    virtual void resize(size_t size) override 
+    { 
+        if (size > N) throw std::length_error("queue exceeds static capacity");
+        m_queue.resize(size); 
+    }
+
+    virtual void resize(size_t size, const ValueType& value) override 
+    { 
+        if (size > N) throw std::length_error("queue exceeds static capacity");
+        m_queue.resize(size, value); 
+    }
 
     virtual bool push(const ValueType& value) override 
     { 
@@ -1235,6 +1278,7 @@ public:
     StaticQueue(const std::initializer_list<ValueType>& data) 
         : m_store{}, m_size{ data.size() }, m_head{ 0 }, m_tail{ m_size % N}
     {
+        if (data.size() > N) throw std::length_error("Initial size exceeds static capacity");
         std::uninitialized_move(data.begin(), data.end(), begin());
     }
 
@@ -1410,8 +1454,8 @@ public:
 
     Iterator insert(Iterator pos, Iterator first, Iterator last) override
     {
-        const auto copyStart = std::distance(static_cast<InternalConstIterator>(begin()), static_cast<InternalConstIterator>(pos));
-        const auto copyCount = std::distance(static_cast<InternalConstIterator>(first), static_cast<InternalConstIterator>(last));
+        const auto copyStart = std::distance(begin(), pos);
+        const auto copyCount = std::distance(first, last);
         const auto copyEnd = copyStart + copyCount;
 
         if (copyCount == 0) return pos;
@@ -1437,14 +1481,14 @@ public:
         }
         
         m_size += copyCount;
-        m_tail = m_size % N;
+        m_tail = (m_head + m_size) % N;
         
         return pos;
     }
 
     Iterator insert(Iterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) override
     {
-        const auto copyStart = std::distance(static_cast<InternalConstIterator>(begin()), static_cast<InternalConstIterator>(pos));
+        const auto copyStart = std::distance(begin(), pos);
         const auto copyCount = std::distance(first, last);
         const auto copyEnd = copyStart + copyCount;
 
@@ -1471,7 +1515,7 @@ public:
         }
         
         m_size += copyCount;
-        m_tail = m_size % N;
+        m_tail = (m_head + m_size) % N;
         
         return pos;
     }
@@ -1621,11 +1665,23 @@ public:
     // --- manipulation
     // ----------------------------------------
     void clear() noexcept override { m_map.clear(); }
-    std::pair<Iterator, bool> insert(const std::pair<const KeyType, ValueType>& node) override { return m_map.insert(node); }
+
+    std::pair<Iterator, bool> insert(const std::pair<const KeyType, ValueType>& node) override
+    {
+        if (full()) throw std::length_error("map size exceeds static capacity");
+        auto result = m_map.insert(node);
+        return std::make_pair(Iterator(result.first), result.second);
+    }
+
     size_t erase(const KeyType& key) override { return m_map.erase(key); }
 
     template<class... Args>
-    std::pair<Iterator, bool> emplace(Args&&... args) { return m_map.emplace(std::forward<Args>(args)...); }
+    std::pair<Iterator, bool> emplace(Args&&... args)
+    {
+        if (full()) throw std::length_error("map size exceeds static capacity");
+        auto result = m_map.emplace(std::forward<Args>(args)...);
+        return std::make_pair(Iterator(result.first), result.second);
+    }
 
 private:
     StaticBlockPool<N, allocData<typename Handle::NodeEstimate>()> m_pool;
