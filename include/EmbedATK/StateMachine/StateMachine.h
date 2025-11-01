@@ -1,211 +1,10 @@
 #pragma once
 
-#include "EmbedATK/Core/Concepts.h"
+#include "State.h"
+#include "StateTransition.h"
+#include "SubstateGroup.h"
+
 #include "EmbedATK/Memory/Container.h"
-
-
-// ------------------------------------------------------
-//                        States
-// ------------------------------------------------------
-
-// Base class which concrete states must inherit from
-template<auto StateId>
-class IState
-{
-public:
-    using IdType = decltype(StateId);
-    inline static constexpr IdType ID = StateId;
-
-    virtual ~IState() = default;
-    
-    virtual void onEntry() = 0;
-    virtual void onActive(IdType* subStates, size_t numSubStates) = 0;
-    virtual void onExit() = 0;
-
-    static_assert(magic_enum::is_scoped_enum_v<IdType>);
-};
-
-// Concept for a valid state
-template<class T>
-concept IsState = requires { 
-    requires is_templated_base_of_v<IState, T>;
-    requires magic_enum::enum_name<T::ID>() == reflect::type_name<T>();
-};
-
-// Concept for a valid collection of states
-template<class T, class... Ts>
-concept AreStates = requires { 
-    requires IsState<T>;
-    requires (
-        (
-            IsState<Ts> && 
-            std::is_same_v<typename T::IdType, typename Ts::IdType>
-        )
-        && ...
-    );
-    requires are_types_unique_v<T, Ts...>;
-};
-
-// For defining all States of a State Machine
-template<IsState DefaultState, IsState... OtherStates>
-requires AreStates<DefaultState, OtherStates...>
-using States = std::tuple<DefaultState, OtherStates...>;
-
-// ------------------------------------------------------
-//                     State Transitions
-// ------------------------------------------------------
-
-// State Transition from one State to another on trigger with optional callback
-template<IsState From, auto Trig, IsState To, auto Callback = std::nullopt>
-struct StateTransition
-{
-    using OldState                  = From;
-    using NewState                  = To;
-    static constexpr auto TRIG      = Trig;
-    static constexpr auto CALLBACK  = Callback;
-
-    static_assert(!std::is_same_v<From, To>);
-    static_assert(magic_enum::is_scoped_enum_v<decltype(Trig)>);
-    static_assert(is_optionally_invocable_v<decltype(Callback), decltype(From::ID), decltype(Trig), decltype(To::ID)>);
-};
-
-// concept to force a valid state transition
-template<typename T>
-concept IsStateTransition = requires {
-    typename T;
-    typename T::OldState;
-    typename T::NewState;
-    { T::TRIG };
-    { T::CALLBACK };
-
-    requires AreStates<typename T::OldState, typename T::NewState> && magic_enum::is_scoped_enum_v<decltype(T::TRIG)>;
-    requires is_optionally_invocable_v<decltype(T::CALLBACK), decltype(T::OldState::ID), decltype(T::TRIG), decltype(T::NewState::ID)>;
-};
-
-namespace detail {
-    template <size_t I, typename TransitionTuple, size_t... Js>
-    consteval bool check_inner_loop(std::index_sequence<Js...>) {
-        return ([&] {
-            if constexpr (I >= Js) {
-                return true;
-            } else {
-                using T1 = std::tuple_element_t<I, TransitionTuple>;
-                using T2 = std::tuple_element_t<Js, TransitionTuple>;
-                if (std::is_same_v<typename T1::OldState, typename T2::OldState> && T1::TRIG == T2::TRIG) {
-                    return false;
-                }
-                return true;
-            }
-        }() && ...);
-    }
-
-    template <typename TransitionTuple, size_t... Is>
-    consteval bool check_determinism(std::index_sequence<Is...>) {
-        constexpr size_t N = std::tuple_size_v<TransitionTuple>;
-        return (check_inner_loop<Is, TransitionTuple>(std::make_index_sequence<N>()) && ...);
-    }
-}
-
-template <typename... Transitions>
-inline constexpr bool are_transitions_deterministic_v = detail::check_determinism<std::tuple<Transitions...>>(
-    std::make_index_sequence<sizeof...(Transitions)>()
-);
-
-// Concept for a valid collection of state transitions
-template<class T, class... Ts>
-concept AreStateTransitions = requires { 
-    requires IsStateTransition<T>;
-    requires (
-        (
-            IsStateTransition<Ts> && 
-            std::is_same_v<decltype(T::TRIG), decltype(Ts::TRIG)>
-        )
-        && ...
-    );
-    requires are_types_unique_v<T, Ts...>;
-    requires are_transitions_deterministic_v<T, Ts...>;
-};
-
-// For defining all Transitions of a State Machine
-template<IsStateTransition FirstTransition, IsStateTransition... OtherTransitions>
-requires AreStateTransitions<FirstTransition, OtherTransitions...>
-using StateTransitions = std::tuple<FirstTransition, OtherTransitions...>;
-
-// ------------------------------------------------------
-//                     SubState Groups
-// ------------------------------------------------------
-
-// Substate-Group for defining hierarchical States
-template<IsState Parent, IsState DefaultChild, IsState... Children>
-struct SubstateGroup 
-{
-    static_assert(AreStates<DefaultChild, Children...>);
-    static_assert(std::is_same_v<typename Parent::IdType, typename DefaultChild::IdType>);
-    static_assert(!std::is_same_v<Parent, DefaultChild>);
-    static_assert((!std::is_same_v<Parent, Children> && ...));
-    
-    using ParentState       = Parent;
-    using DefaultChildState = DefaultChild;
-    using ChildStates       = std::tuple<DefaultChild, Children...>;
-};
-
-// concept to force a valid substate group
-template<typename T>
-concept IsSubstateGroup = requires {
-    typename T;
-    typename T::ParentState;
-    typename T::DefaultChildState;
-    typename T::ChildStates;
-
-    requires std::is_same_v<typename T::ParentState::IdType, typename  T::DefaultChildState::IdType>;
-    requires !std::is_same_v<typename T::ParentState, typename T::DefaultChildState>;
-    requires all_tuple_types_unique_v<typename T::ChildStates>;
-};
-
-// Concept for a valid collection of substate groups
-template<class... Ts>
-concept AreSubstateGroups = requires { 
-    requires (IsSubstateGroup<Ts> && ...);
-    requires all_tuple_types_unique_v<std::tuple<Ts...>>;
-    requires all_tuple_types_unique_v<std::tuple<typename Ts::ParentState...>>;
-    requires all_tuple_types_unique_v<decltype(std::tuple_cat(std::declval<typename Ts::ChildStates>()...))>;
-};
-
-// For defining hierarchy substate groups of a State Machine
-template<IsSubstateGroup... Groups>
-requires AreSubstateGroups<Groups...>
-using StateHierarchy = std::tuple<Groups...>;
-
-// ------------------------------------------------------
-//                     State Machine
-// ------------------------------------------------------
-
-template<typename T>
-inline constexpr bool is_valid_are_states_tuple_v = false; // Default for non-tuples
-
-template<typename T, typename... Ts>
-inline constexpr bool is_valid_are_states_tuple_v<std::tuple<T, Ts...>> = AreStates<T, Ts...>;
-
-template<typename T>
-concept IsValidStatesTuple = is_tuple_v<T> && is_valid_are_states_tuple_v<T>;
-
-template<typename T>
-inline constexpr bool is_valid_are_state_transitions_tuple_v = false;
-
-template<typename T, typename... Ts>
-inline constexpr bool is_valid_are_state_transitions_tuple_v<std::tuple<T, Ts...>> = AreStateTransitions<T, Ts...>;
-
-template<typename T>
-concept IsValidTransitionsTuple = is_tuple_v<T> && is_valid_are_state_transitions_tuple_v<T>;
-
-template<typename T>
-inline constexpr bool is_valid_are_substate_groups_tuple_v = false;
-
-template<typename... Ts>
-inline constexpr bool is_valid_are_substate_groups_tuple_v<std::tuple<Ts...>> = AreSubstateGroups<Ts...>;
-
-template<typename T>
-concept IsValidHierarchyTuple = is_tuple_v<T> && is_valid_are_substate_groups_tuple_v<T>;
 
 namespace detail {
     template<typename StatesTuple, typename EventsEnum, typename... Transitions>
@@ -219,11 +18,7 @@ namespace detail {
             && ...
         );
     }
-}
-template<typename TransitionsTuple, typename StatesTuple, typename EventsEnum>
-inline constexpr bool all_transitions_are_valid_v = detail::validate_transitions_impl<StatesTuple, EventsEnum>(TransitionsTuple{});
 
-namespace detail {
     template<typename StatesTuple, typename... Groups>
     consteval bool validate_hierarchy_impl(std::tuple<Groups...>) {
         auto check_children = []<typename... Children>(std::tuple<Children...>) {
@@ -239,14 +34,18 @@ namespace detail {
         ); 
     }
 }
-template<typename HierarchyTuple, typename StatesTuple>
-inline constexpr bool all_hierarchy_states_are_valid_v = detail::validate_hierarchy_impl<StatesTuple>(HierarchyTuple{});
+
+template<typename TransitionsTuple, typename StatesTuple, typename EventsEnum>
+inline constexpr bool transitions_valid_v = detail::validate_transitions_impl<StatesTuple, EventsEnum>(TransitionsTuple{});
+
+template<typename SubstateGroupsTuple, typename StatesTuple>
+inline constexpr bool hierarchy_valid_v = detail::validate_hierarchy_impl<StatesTuple>(SubstateGroupsTuple{});
 
 template <
-    IsValidStatesTuple States,
+    IsStatesTuple States,
     IsEnumClass Events,
-    IsValidTransitionsTuple Transitions,
-    IsValidHierarchyTuple Hierarchy = StateHierarchy<>,
+    IsStateTransitionsTuple Transitions,
+    IsSubstateGroupsTuple Hierarchy = StateHierarchy<>,
     size_t MaxDepth = 8
 >
 class StateMachine
@@ -260,8 +59,8 @@ class StateMachine
     static_assert(NUM_EVENTS > 0, "A state machine must have at least one event.");
     static_assert(NUM_TRANSITIONS > 0, "A state machine must have at least one transition.");
 
-    static_assert(all_transitions_are_valid_v<Transitions, States, Events>, "One or more 'StateTransition' definitions are invalid");
-    static_assert(all_hierarchy_states_are_valid_v<Hierarchy, States>, "One or more 'SubstateGroup' definitions are invalid");
+    static_assert(transitions_valid_v<Transitions, States, Events>, "One or more 'StateTransition' definitions are invalid");
+    static_assert(hierarchy_valid_v<Hierarchy, States>, "One or more 'SubstateGroup' definitions are invalid");
 
     using StateId = std::tuple_element_t<0, States>::IdType;
 
