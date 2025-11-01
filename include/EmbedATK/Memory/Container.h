@@ -56,7 +56,7 @@ template<typename IterT>
 concept IsIterator = (!is_any_iterator<std::decay_t<IterT>>::value) && 
                         std::input_or_output_iterator<IterT>;
 
-template <typename T, typename Category>
+template <typename T, typename Category = std::bidirectional_iterator_tag>
 class AnyIterator
 {
     template <typename T_Friend, typename C_Friend>
@@ -266,11 +266,15 @@ private:
         // --- information
         // ----------------------------------------
         virtual bool isEqual(const Concept* other) const = 0;
-        virtual const std::type_info& type() const noexcept = 0;
-        virtual value_type& dereferenced() const = 0;
-        virtual reference at(difference_type n) const = 0;
+        virtual const std::type_info& type() const noexcept = 0;   
         virtual difference_type difference(const Concept* other) const = 0;
         virtual bool isLess(const Concept* other) const = 0;
+
+        // ----------------------------------------
+        // --- data access
+        // ----------------------------------------
+        virtual value_type& dereferenced() const = 0;
+        virtual reference at(difference_type n) const = 0;
 
         // ----------------------------------------
         // --- modification
@@ -311,12 +315,18 @@ private:
 
         difference_type difference(const Concept* other) const override
         {
-            return iter - static_cast<const Model<IterT>*>(other)->iter;
+            if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category, std::random_access_iterator_tag>)
+                return iter - static_cast<const Model<IterT>*>(other)->iter;
+            else
+                throw std::logic_error("difference not supported for this iterator category");
         }
 
         bool isLess(const Concept* other) const override
         {
-            return iter < static_cast<const Model<IterT>*>(other)->iter;
+            if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category, std::random_access_iterator_tag>)
+                return iter < static_cast<const Model<IterT>*>(other)->iter;
+            else
+                throw std::logic_error("isLess not supported for this iterator category");
         }
 
         // ----------------------------------------
@@ -326,7 +336,10 @@ private:
 
         reference at(difference_type n) const override
         {
-            return iter[n];
+            if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category, std::random_access_iterator_tag>)
+                return iter[n];
+            else
+                throw std::logic_error("at() not supported for this iterator category");
         }
 
         // ----------------------------------------
@@ -354,8 +367,20 @@ private:
         
         void increment() override { ++iter; }
         void decrement() override { --iter; }
-        void increment(difference_type n) override { iter += n; }
-        void decrement(difference_type n) override { iter -= n; }
+        void increment(difference_type n) override 
+        {
+            if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category, std::random_access_iterator_tag>)
+                iter += n;
+            else
+                throw std::logic_error("increment(n) not supported for this iterator category");
+        }
+        void decrement(difference_type n) override 
+        {
+            if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category, std::random_access_iterator_tag>)
+                iter -= n;
+            else
+                throw std::logic_error("decrement(n) not supported for this iterator category");
+        }
 
         // ----------------------------------------
         // --- data
@@ -446,13 +471,13 @@ public:
 };
 
 template<typename K, typename V>
-class IAssociativeContainer : public IIterable<std::pair<K, V>, std::bidirectional_iterator_tag>
+class IAssociativeContainer : public IIterable<std::pair<const K, V>, std::bidirectional_iterator_tag>
 {
 public:
     // ----------------------------------------
     // --- types
     // ----------------------------------------
-    using Iterable      = IIterable<std::pair<K, V>, std::bidirectional_iterator_tag>;
+    using Iterable      = IIterable<std::pair<const K, V>, std::bidirectional_iterator_tag>;
     using KeyType       = K;
     using ValueType     = V;
     using Iterator      = Iterable::Iterator;
@@ -875,428 +900,432 @@ private:
 static_assert(std::ranges::random_access_range<StaticVector<int, 5>>);
 static_assert(std::ranges::random_access_range<const StaticVector<int, 5>>);
 
-// //------------------------------------------------------
-// //                      Queue
-// //------------------------------------------------------
+//------------------------------------------------------
+//                      Queue
+//------------------------------------------------------
 
-// template<typename T>
-// class IQueue : public IContigousContainer<T>
-// {
-// public:
-//     // ----------------------------------------
-//     // --- types
-//     // ----------------------------------------
-//     using Container     = IContigousContainer<T>;
-//     using ValueType     = Container::ValueType;
-//     using Iterator      = Container::Iterator;
-//     using ConstIterator = Container::ConstIterator;
-//     using OptionalRef   = std::optional<std::reference_wrapper<ValueType>>;
+template<typename T>
+class IQueue : public IContigousContainer<T>
+{
+public:
+    // ----------------------------------------
+    // --- types
+    // ----------------------------------------
+    using Container     = IContigousContainer<T>;
+    using ValueType     = Container::ValueType;
+    using Iterator      = Container::Iterator;
+    using ConstIterator = Container::ConstIterator;
+    using OptionalRef   = std::optional<std::reference_wrapper<ValueType>>;
 
-//     // ----------------------------------------
-//     // --- constructors/destructors
-//     // ----------------------------------------
-//     virtual ~IQueue() = default;
+    // ----------------------------------------
+    // --- constructors/destructors
+    // ----------------------------------------
+    virtual ~IQueue() = default;
 
-//     // ----------------------------------------
-//     // --- information
-//     // ----------------------------------------
-//     virtual constexpr bool full() const noexcept = 0;
-//     virtual constexpr size_t capacity() const noexcept = 0;
+    // ----------------------------------------
+    // --- information
+    // ----------------------------------------
+    virtual constexpr bool full() const noexcept = 0;
+    virtual constexpr size_t capacity() const noexcept = 0;
 
-//     // ----------------------------------------
-//     // --- data access
-//     // ----------------------------------------
-//     virtual std::optional<ValueType> peek() = 0;
+    // ----------------------------------------
+    // --- data access
+    // ----------------------------------------
+    virtual std::optional<ValueType> peek() = 0;
 
-//     // ----------------------------------------
-//     // --- manipulation
-//     // ----------------------------------------
-//     virtual void clear() noexcept = 0;
-//     virtual bool push(const ValueType& value) = 0;
-//     virtual bool push(ValueType&& value) = 0;
-//     virtual std::optional<ValueType> pop() = 0;
-//     virtual void swap(IQueue<ValueType>& other) = 0;
-//     virtual Iterator insert(ConstIterator pos, ConstIterator first, ConstIterator last) = 0;
-//     virtual Iterator insert(ConstIterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) = 0;
-// };
+    // ----------------------------------------
+    // --- manipulation
+    // ----------------------------------------
+    virtual void clear() noexcept = 0;
+    virtual bool push(const ValueType& value) = 0;
+    virtual bool push(ValueType&& value) = 0;
+    virtual std::optional<ValueType> pop() = 0;
+    virtual void swap(IQueue<ValueType>& other) = 0;
+    virtual Iterator insert(Iterator pos, Iterator first, Iterator last) = 0;
+    virtual Iterator insert(Iterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) = 0;
+};
 
-// template<typename T, size_t N, bool ClearOnDestroy = true>
-// requires std::default_initializable<T>
-// class StaticQueue : public IQueue<T>
-// {   
-//     static_assert(std::is_same<typename std::remove_cv<T>::type, T>::value,
-// 	  "StaticQueue must have a non-const, non-volatile value_type");
+template<typename T, size_t N, bool ClearOnDestroy = true>
+requires std::default_initializable<T>
+class StaticQueue : public IQueue<T>
+{   
+    static_assert(std::is_same<typename std::remove_cv<T>::type, T>::value,
+	  "StaticQueue must have a non-const, non-volatile value_type");
 
-//     template<bool IsConst>
-//     struct QueueIterator 
-//     {
-//         // ----------------------------------------
-//         // --- types
-//         // ----------------------------------------
-//         using iterator_category = std::random_access_iterator_tag;
-//         using difference_type   = std::ptrdiff_t;
-//         using value_type        = std::remove_const_t<T>;
-//         using pointer           = std::conditional_t<IsConst, const value_type*, value_type*>;
-//         using reference         = std::conditional_t<IsConst, const value_type&, value_type&>;
-//         using owner_type        = std::conditional_t<IsConst, const StaticQueue, StaticQueue>;
+    template<typename T_friend, size_t N_friend, bool ClearOnDestroy_Friend>
+    requires std::default_initializable<T_friend>
+    friend class StaticQueue;
 
-//         // ----------------------------------------
-//         // --- constructors/destructors
-//         // ----------------------------------------
-//         constexpr QueueIterator() = default;
-//         constexpr QueueIterator(owner_type* owner, size_t index) : owner{ owner }, index{ index } {}
-//         template<bool WasConst>
-//         requires(IsConst && !WasConst)
-//         constexpr QueueIterator(const QueueIterator<WasConst>& other) : owner{ other.owner }, index{ other.index } {}
-//         ~QueueIterator() = default;
+    template<bool IsConst>
+    struct QueueIterator 
+    {
+        // ----------------------------------------
+        // --- types
+        // ----------------------------------------
+        using iterator_category = std::random_access_iterator_tag;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = std::remove_const_t<T>;
+        using pointer           = std::conditional_t<IsConst, const value_type*, value_type*>;
+        using reference         = std::conditional_t<IsConst, const value_type&, value_type&>;
+        using owner_type        = std::conditional_t<IsConst, const StaticQueue, StaticQueue>;
 
-//         // --- C++23: Let the compiler handle most of this! ---
-//         // The spaceship operator (<=>) generates ==, !=, <, >, <=, >= for free.
-//         auto operator<=>(const QueueIterator&) const = default;
+        // ----------------------------------------
+        // --- constructors/destructors
+        // ----------------------------------------
+        constexpr QueueIterator() = default;
+        constexpr QueueIterator(owner_type* owner, size_t index) : owner{ owner }, index{ index } {}
+        template<bool WasConst>
+        requires(IsConst && !WasConst)
+        constexpr QueueIterator(const QueueIterator<WasConst>& other) : owner{ other.owner }, index{ other.index } {}
+        ~QueueIterator() = default;
 
-//         // ----------------------------------------
-//         // --- data access
-//         // ----------------------------------------
-//         reference operator*() const { return (*owner)[index]; }
-//         reference operator[](difference_type n) const { return (*owner)[index + n]; }
+        // --- C++23: Let the compiler handle most of this! ---
+        // The spaceship operator (<=>) generates ==, !=, <, >, <=, >= for free.
+        auto operator<=>(const QueueIterator&) const = default;
 
-//         // ----------------------------------------
-//         // --- manipulation
-//         // ----------------------------------------
-//         QueueIterator& operator++() { ++index; return *this; }
-//         QueueIterator operator++(int) { QueueIterator tmp = *this; ++index; return tmp; }
-//         QueueIterator& operator--() { --index; return *this; }
-//         QueueIterator operator--(int) { QueueIterator tmp = *this; --index; return tmp; }
-//         QueueIterator& operator+=(difference_type n) { index += n; return *this; }
-//         QueueIterator& operator-=(difference_type n) { index -= n; return *this; }
+        // ----------------------------------------
+        // --- data access
+        // ----------------------------------------
+        reference operator*() const { return (*owner)[index]; }
+        reference operator[](difference_type n) const { return (*owner)[index + n]; }
 
-//         friend QueueIterator operator+(QueueIterator it, difference_type n) { return (it += n); }
-//         friend QueueIterator operator+(difference_type n, QueueIterator it) { return (it += n); }
-//         friend QueueIterator operator-(QueueIterator it, difference_type n) { return (it -= n); }
-//         friend difference_type operator-(const QueueIterator& lhs, const QueueIterator& rhs) {
-//             return static_cast<difference_type>(lhs.index) - static_cast<difference_type>(rhs.index);
-//         }
+        // ----------------------------------------
+        // --- manipulation
+        // ----------------------------------------
+        QueueIterator& operator++() { ++index; return *this; }
+        QueueIterator operator++(int) { QueueIterator tmp = *this; ++index; return tmp; }
+        QueueIterator& operator--() { --index; return *this; }
+        QueueIterator operator--(int) { QueueIterator tmp = *this; --index; return tmp; }
+        QueueIterator& operator+=(difference_type n) { index += n; return *this; }
+        QueueIterator& operator-=(difference_type n) { index -= n; return *this; }
+
+        friend QueueIterator operator+(QueueIterator it, difference_type n) { return (it += n); }
+        friend QueueIterator operator+(difference_type n, QueueIterator it) { return (it += n); }
+        friend QueueIterator operator-(QueueIterator it, difference_type n) { return (it -= n); }
+        friend difference_type operator-(const QueueIterator& lhs, const QueueIterator& rhs) {
+            return static_cast<difference_type>(lhs.index) - static_cast<difference_type>(rhs.index);
+        }
         
-//         // ----------------------------------------
-//         // --- data
-//         // ----------------------------------------
-//         owner_type* owner;
-//         size_t index;
-//     };
+        // ----------------------------------------
+        // --- data
+        // ----------------------------------------
+        owner_type* owner;
+        size_t index;
+    };
 
-// public:
-//     // ----------------------------------------
-//     // --- types
-//     // ----------------------------------------
-//     using Handle                = IQueue<T>;
-//     using ValueType             = Handle::ValueType;
-//     using Iterator              = Handle::Iterator;
-//     using ConstIterator         = Handle::ConstIterator;
-//     using InternalIterator      = QueueIterator<false>;
-//     using InternalConstIterator = QueueIterator<true>;
-//     using OptionalRef           = Handle::OptionalRef;
+public:
+    // ----------------------------------------
+    // --- types
+    // ----------------------------------------
+    using Handle                = IQueue<T>;
+    using ValueType             = Handle::ValueType;
+    using Iterator              = Handle::Iterator;
+    using ConstIterator         = Handle::ConstIterator;
+    using InternalIterator      = QueueIterator<false>;
+    using InternalConstIterator = QueueIterator<true>;
+    using OptionalRef           = Handle::OptionalRef;
     
-//     // ----------------------------------------
-//     // --- constructors/destructors
-//     // ----------------------------------------
-//     StaticQueue() noexcept 
-//         : m_store{}, m_size{ 0 } , m_head{ 0 }, m_tail{ 0 }
-//     {}
+    // ----------------------------------------
+    // --- constructors/destructors
+    // ----------------------------------------
+    StaticQueue() noexcept 
+        : m_store{}, m_size{ 0 } , m_head{ 0 }, m_tail{ 0 }
+    {}
 
-//     StaticQueue(const size_t size) 
-//         : m_store{}, m_size{ size } , m_head{ 0 }, m_tail{ m_size % N }
-//     { 
-//         if (size > N) throw std::length_error("Initial size exceeds static capacity"); 
-//         m_store.construct(0, m_size);
-//     }
+    StaticQueue(const size_t size) 
+        : m_store{}, m_size{ size } , m_head{ 0 }, m_tail{ m_size % N }
+    { 
+        if (size > N) throw std::length_error("Initial size exceeds static capacity"); 
+        m_store.construct(0, m_size);
+    }
 
-//     StaticQueue(const size_t size, const ValueType& value) 
-//         : m_store{}, m_size{ size }, m_head{ 0 }, m_tail{ m_size % N }
-//     {
-//         if (size > N) throw std::length_error("Initial size exceeds static capacity");
-//         m_store.uninitializedFill(0, m_size, value);
-//     }
+    StaticQueue(const size_t size, const ValueType& value) 
+        : m_store{}, m_size{ size }, m_head{ 0 }, m_tail{ m_size % N }
+    {
+        if (size > N) throw std::length_error("Initial size exceeds static capacity");
+        m_store.uninitializedFill(0, m_size, value);
+    }
 
-//     StaticQueue(const StaticQueue& other) 
-//         : m_store{}, m_size{ other.m_size }, m_head{ 0 }, m_tail{ m_size % N }
-//     {
-//         std::uninitialized_copy(other.begin(), other.end(), begin());
-//     }
+    StaticQueue(const StaticQueue& other) 
+        : m_store{}, m_size{ other.m_size }, m_head{ 0 }, m_tail{ m_size % N }
+    {
+        std::uninitialized_copy(other.begin(), other.end(), begin());
+    }
 
-//     StaticQueue(StaticQueue&& other) noexcept 
-//         : m_store{}, m_size{ other.m_size }, m_head{ 0 }, m_tail{ m_size % N }
-//     {
-//         std::uninitialized_move(other.begin(), other.end(), begin());
-//         other.clear();
-//     }
+    StaticQueue(StaticQueue&& other) noexcept 
+        : m_store{}, m_size{ other.m_size }, m_head{ 0 }, m_tail{ m_size % N }
+    {
+        std::uninitialized_move(other.begin(), other.end(), begin());
+        other.clear();
+    }
 
-//     StaticQueue(const std::initializer_list<ValueType>& data) 
-//         : m_store{}, m_size{ data.size() }, m_head{ 0 }, m_tail{ m_size % N}
-//     {
-//         std::uninitialized_move(data.begin(), data.end(), begin());
-//     }
+    StaticQueue(const std::initializer_list<ValueType>& data) 
+        : m_store{}, m_size{ data.size() }, m_head{ 0 }, m_tail{ m_size % N}
+    {
+        std::uninitialized_move(data.begin(), data.end(), begin());
+    }
 
-//     ~StaticQueue()
-//     {
-//         clear();
-//     }
+    ~StaticQueue()
+    {
+        clear();
+    }
 
-//     // ----------------------------------------
-//     // --- iterators
-//     // ----------------------------------------
-//     constexpr Iterator begin() noexcept override { return Iterator(InternalIterator{this, 0}); }
-//     constexpr ConstIterator begin() const noexcept override { return ConstIterator(InternalConstIterator{this, 0}); }
-//     constexpr Iterator end() noexcept override { return Iterator(InternalIterator{this, m_size}); }
-//     constexpr ConstIterator end() const noexcept override { return ConstIterator(InternalConstIterator{this, m_size}); }
+    // ----------------------------------------
+    // --- iterators
+    // ----------------------------------------
+    constexpr Iterator begin() noexcept override { return Iterator(InternalIterator{this, 0}); }
+    constexpr ConstIterator begin() const noexcept override { return ConstIterator(InternalConstIterator{this, 0}); }
+    constexpr Iterator end() noexcept override { return Iterator(InternalIterator{this, m_size}); }
+    constexpr ConstIterator end() const noexcept override { return ConstIterator(InternalConstIterator{this, m_size}); }
 
-//     // ----------------------------------------
-//     // --- information
-//     // ----------------------------------------
-//     constexpr bool empty() const noexcept override { return m_size == 0; }
-//     constexpr bool full() const noexcept override { return m_size >= N; }
-//     constexpr size_t size() const noexcept override { return m_size; }
-//     constexpr size_t capacity() const noexcept override { return N; }
+    // ----------------------------------------
+    // --- information
+    // ----------------------------------------
+    constexpr bool empty() const noexcept override { return m_size == 0; }
+    constexpr bool full() const noexcept override { return m_size >= N; }
+    constexpr size_t size() const noexcept override { return m_size; }
+    constexpr size_t capacity() const noexcept override { return N; }
 
-//     // ----------------------------------------
-//     // --- data access
-//     // ----------------------------------------
-//     constexpr ValueType* data() noexcept { return reinterpret_cast<ValueType*>(m_store.data()); }
-//     constexpr const ValueType* data() const noexcept { return reinterpret_cast<const ValueType*>(m_store.data()); }
-//     ValueType& operator[](size_t index) override { return data()[(m_head + index) % N]; }
-//     const ValueType& operator[](size_t index) const override { return data()[(m_head + index) % N]; }
+    // ----------------------------------------
+    // --- data access
+    // ----------------------------------------
+    constexpr ValueType* data() noexcept { return reinterpret_cast<ValueType*>(m_store.data()); }
+    constexpr const ValueType* data() const noexcept { return reinterpret_cast<const ValueType*>(m_store.data()); }
+    ValueType& operator[](size_t index) override { return data()[(m_head + index) % N]; }
+    const ValueType& operator[](size_t index) const override { return data()[(m_head + index) % N]; }
 
-//     ValueType& at(size_t index) override
-//     { 
-//         if (index >= m_size) throw std::out_of_range("index exceeds queue size");
-//         return (*this)[index];
-//     }
+    ValueType& at(size_t index) override
+    { 
+        if (index >= m_size) throw std::out_of_range("index exceeds queue size");
+        return (*this)[index];
+    }
 
-//     const ValueType& at(size_t index) const override
-//     { 
-//         if (index >= m_size) throw std::out_of_range("index exceeds queue size");
-//         return (*this)[index];
-//     }
+    const ValueType& at(size_t index) const override
+    { 
+        if (index >= m_size) throw std::out_of_range("index exceeds queue size");
+        return (*this)[index];
+    }
 
-//     std::optional<ValueType> peek() override
-//     {
-//         if (empty()) return std::nullopt;
-//         return data()[m_head];
-//     }
+    std::optional<ValueType> peek() override
+    {
+        if (empty()) return std::nullopt;
+        return data()[m_head];
+    }
 
-//     // ----------------------------------------
-//     // --- manipulation
-//     // ----------------------------------------
-//     StaticQueue& operator=(const StaticQueue& other)
-//     {
-//         if (this != &other) {
-//             clear();
+    // ----------------------------------------
+    // --- manipulation
+    // ----------------------------------------
+    StaticQueue& operator=(const StaticQueue& other)
+    {
+        if (this != &other) {
+            clear();
 
-//             m_size = other.m_size;
-//             m_tail = other.m_size % N;
+            m_size = other.m_size;
+            m_tail = other.m_size % N;
 
-//             std::uninitialized_copy(other.begin(), other.end(), begin());
-//         }
-//         return *this;
-//     }
+            std::uninitialized_copy(other.begin(), other.end(), begin());
+        }
+        return *this;
+    }
 
-//     StaticQueue& operator=(StaticQueue&& other) noexcept
-//     {
-//         if (this != &other) {
-//             clear();
+    StaticQueue& operator=(StaticQueue&& other) noexcept
+    {
+        if (this != &other) {
+            clear();
 
-//             m_size = other.m_size;
-//             m_tail = other.m_size % N;
+            m_size = other.m_size;
+            m_tail = other.m_size % N;
 
-//             std::uninitialized_move(other.begin(), other.end(), begin());
-//             other.clear();
-//         }
-//         return *this;
-//     }
+            std::uninitialized_move(other.begin(), other.end(), begin());
+            other.clear();
+        }
+        return *this;
+    }
 
-//     void clear() noexcept override
-//     {
-//         if (m_head > m_tail) {
-//             m_store.destroy(m_tail, N-m_tail);
-//             m_store.destroy(0, m_head);
-//         } else {
-//             m_store.destroy(m_head, m_tail-m_head);
-//         }
-//         m_size = 0;
-//         m_head = 0;
-//         m_tail = 0;
-//     }
+    void clear() noexcept override
+    {
+        if (m_head > m_tail) {
+            m_store.destroy(m_tail, N-m_tail);
+            m_store.destroy(0, m_head);
+        } else {
+            m_store.destroy(m_head, m_tail-m_head);
+        }
+        m_size = 0;
+        m_head = 0;
+        m_tail = 0;
+    }
 
-//     template<size_t M = N>
-//     void swap(StaticQueue<ValueType, M>& other)
-//     {
-//         if (size() > other.capacity() || other.size() > capacity()) 
-//             throw std::length_error("Invalid queue sizes for swap");
+    template<size_t M = N>
+    void swap(StaticQueue<ValueType, M>& other)
+    {
+        if (size() > other.capacity() || other.size() > capacity()) 
+            throw std::length_error("Invalid queue sizes for swap");
 
-//         const auto minSize = std::min(m_size, other.m_size);
-//         std::swap_ranges(other.begin(), other.begin()+minSize, begin());
+        const auto minSize = std::min(m_size, other.m_size);
+        std::swap_ranges(other.begin(), other.begin()+minSize, begin());
 
-//         if (other.m_size > m_size) {
-//             for (size_t i = m_size; i < other.m_size; ++i) {
-//                 std::construct_at(&(*this)[i], std::move(other[i]));
-//                 other.m_store.destroy((other.m_head+i)%N, 1);
-//             }
-//         }
-//         else if (m_size > other.m_size) {
-//             for (size_t i = other.m_size; i < m_size; ++i) {
-//                 std::construct_at(&other[i], std::move((*this)[i]));
-//                 m_store.destroy((m_head+i)%N, 1);
-//             }
-//         }
+        if (other.m_size > m_size) {
+            for (size_t i = m_size; i < other.m_size; ++i) {
+                std::construct_at(&(*this)[i], std::move(other[i]));
+                other.m_store.destroy((other.m_head+i)%N, 1);
+            }
+        }
+        else if (m_size > other.m_size) {
+            for (size_t i = other.m_size; i < m_size; ++i) {
+                std::construct_at(&other[i], std::move((*this)[i]));
+                m_store.destroy((m_head+i)%N, 1);
+            }
+        }
         
-//         std::swap(m_size, other.m_size);
-//         m_tail = (m_head+m_size) % N;
-//         other.m_tail = (other.m_head+other.m_size) % N;
-//     }
+        std::swap(m_size, other.m_size);
+        m_tail = (m_head+m_size) % N;
+        other.m_tail = (other.m_head+other.m_size) % N;
+    }
 
-//     void swap(IQueue<ValueType>& other) override
-//     {
-//         if (size() > other.capacity() || other.size() > capacity()) 
-//             throw std::length_error("Invalid queue sizes for swap");
+    void swap(IQueue<ValueType>& other) override
+    {
+        // if (size() > other.capacity() || other.size() > capacity()) 
+        //     throw std::length_error("Invalid queue sizes for swap");
 
-//         const auto minSize = std::min(size(), other.size());
-//         std::swap_ranges(other.begin(), other.begin()+minSize, begin());
+        // const auto minSize = std::min(size(), other.size());
+        // std::swap_ranges(other.begin(), other.begin()+minSize, begin());
 
-//         if (other.size() > size()) {
-//             for (size_t i = size(); i < other.size(); ++i) {
-//                 std::construct_at(&(*this)[i], std::move(other[i]));
-//                 other.storeMut().destroy((other.headMut()+i)%other.capacity(), 1);
-//             }
-//         }
-//         else if (size() > other.size()) {
-//             for (size_t i = other.size(); i < size(); ++i) {
-//                 std::construct_at(&other[i], std::move((*this)[i]));
-//                 m_store.destroy((m_head+i)%capacity(), 1);
-//             }
-//         }
+        // if (other.size() > size()) {
+        //     for (size_t i = size(); i < other.size(); ++i) {
+        //         std::construct_at(&(*this)[i], std::move(other[i]));
+        //         other.m_store.destroy((other.m_head+i)%other.capacity(), 1);
+        //     }
+        // }
+        // else if (size() > other.size()) {
+        //     for (size_t i = other.size(); i < size(); ++i) {
+        //         std::construct_at(&other[i], std::move((*this)[i]));
+        //         m_store.destroy((m_head+i)%capacity(), 1);
+        //     }
+        // }
         
-//         std::swap(m_size, other.sizeMut());
-//         m_tail = (m_head+m_size) % capacity();
-//         other.tailMut() = (other.headMut()+other.sizeMut()) % other.capacity();
-//     }
+        // std::swap(m_size, other.m_size);
+        // m_tail = (m_head+m_size) % capacity();
+        // other.m_tail = (other.m_head+other.size()) % other.capacity();
+    }
 
-//     template<class... Args>
-//     OptionalRef emplace(Args&&... args)
-//     {
-//         if (full()) return std::nullopt;
-//         auto constructed = std::construct_at(&data()[m_tail], std::forward<Args>(args)...);
-//         m_tail = (m_tail + 1) % N;
-//         m_size++;
-//         return std::ref(*constructed);
-//     }
+    template<class... Args>
+    OptionalRef emplace(Args&&... args)
+    {
+        if (full()) return std::nullopt;
+        auto constructed = std::construct_at(&data()[m_tail], std::forward<Args>(args)...);
+        m_tail = (m_tail + 1) % N;
+        m_size++;
+        return std::ref(*constructed);
+    }
 
-//     bool push(const ValueType& value) override
-//     {
-//         if (full()) return false;
-//         std::construct_at(&data()[m_tail], value);
-//         m_tail = (m_tail + 1) % N;
-//         m_size++;
-//         return true;
-//     }
+    bool push(const ValueType& value) override
+    {
+        if (full()) return false;
+        std::construct_at(&data()[m_tail], value);
+        m_tail = (m_tail + 1) % N;
+        m_size++;
+        return true;
+    }
 
-//     bool push(ValueType&& value) override
-//     {
-//         if (full()) return false;
-//         std::construct_at(&data()[m_tail], std::move(value));
-//         m_tail = (m_tail + 1) % N;
-//         m_size++;
-//         return true;
-//     }
+    bool push(ValueType&& value) override
+    {
+        if (full()) return false;
+        std::construct_at(&data()[m_tail], std::move(value));
+        m_tail = (m_tail + 1) % N;
+        m_size++;
+        return true;
+    }
 
-//     std::optional<ValueType> pop() override
-//     {
-//         if (empty()) return std::nullopt;
-//         ValueType value = std::move(data()[m_head]);
-//         m_store.destroy(m_head, 1);
-//         m_head = (m_head + 1) % N;
-//         m_size--;
-//         return std::move(value);
-//     }
+    std::optional<ValueType> pop() override
+    {
+        if (empty()) return std::nullopt;
+        ValueType value = std::move(data()[m_head]);
+        m_store.destroy(m_head, 1);
+        m_head = (m_head + 1) % N;
+        m_size--;
+        return std::move(value);
+    }
 
-//     Iterator insert(ConstIterator pos, ConstIterator first, ConstIterator last) override
-//     {
-//         // const auto copyStart = std::distance(begin(), pos);
-//         // const auto copyCount = std::distance(first, last);
-//         // const auto copyEnd   = copyStart + copyCount;
+    Iterator insert(Iterator pos, Iterator first, Iterator last) override
+    {
+        const auto copyStart = std::distance(static_cast<InternalConstIterator>(begin()), static_cast<InternalConstIterator>(pos));
+        const auto copyCount = std::distance(static_cast<InternalConstIterator>(first), static_cast<InternalConstIterator>(last));
+        const auto copyEnd = copyStart + copyCount;
 
-//         // if (copyCount == 0) return pos;
-//         // if (m_size + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
+        if (copyCount == 0) return pos;
+        if (m_size + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
 
-//         // if (pos != end()) {
-//         //     // shift existing elements 
-//         //     std::uninitialized_move_n(end()-copyCount, copyCount, end());
-//         //     std::ranges::move(pos, end()-copyCount, begin()+copyEnd);
+        if (pos != end()) {
+            // shift existing elements 
+            std::uninitialized_move_n(end()-copyCount, copyCount, end());
+            std::ranges::move(pos, end()-copyCount, begin()+copyEnd);
 
-//         //     // copy new elements
-//         //     if (copyEnd > m_size) {
-//         //         std::copy_n(first, m_size-copyStart, pos);
-//         //         std::uninitialized_copy(first + (m_size-copyStart), last, end());
-//         //     }
-//         //     else {
-//         //         std::copy(first, last, pos);
-//         //     }
-//         // }
-//         // else {
-//         //     // copy new elements
-//         //     std::uninitialized_copy(first, last, pos);
-//         // }
+            // copy new elements
+            if (copyEnd > m_size) {
+                std::copy_n(first, m_size-copyStart, pos);
+                std::uninitialized_copy(first + (m_size-copyStart), last, end());
+            }
+            else {
+                std::copy(first, last, pos);
+            }
+        }
+        else {
+            // copy new elements
+            std::uninitialized_copy(first, last, pos);
+        }
         
-//         // m_size += copyCount;
-//         // m_tail = m_size % N;
+        m_size += copyCount;
+        m_tail = m_size % N;
         
-//         return pos;
-//     }
+        return pos;
+    }
 
-//     Iterator insert(ConstIterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) override
-//     {
-//         // const auto copyStart = std::distance(begin(), pos);
-//         // const auto copyCount = std::distance(first, last);
-//         // const auto copyEnd   = copyStart + copyCount;
+    Iterator insert(Iterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) override
+    {
+        const auto copyStart = std::distance(static_cast<InternalConstIterator>(begin()), static_cast<InternalConstIterator>(pos));
+        const auto copyCount = std::distance(first, last);
+        const auto copyEnd = copyStart + copyCount;
 
-//         // if (copyCount == 0) return pos;
-//         // if (m_size + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
+        if (copyCount == 0) return pos;
+        if (m_size + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
 
-//         // if (pos != end()) {
-//         //     // shift existing elements 
-//         //     std::uninitialized_move_n(end()-copyCount, copyCount, end());
-//         //     std::ranges::move(pos, end()-copyCount, begin()+copyEnd);
+        if (pos != end()) {
+            // shift existing elements 
+            std::uninitialized_move_n(end()-copyCount, copyCount, end());
+            std::ranges::move(pos, end()-copyCount, begin()+copyEnd);
 
-//         //     // move new elements
-//         //     if (copyEnd > m_size) {
-//         //         std::ranges::move(first, first + (m_size-copyStart), pos);
-//         //         std::uninitialized_move(first + (m_size-copyStart), last, end());
-//         //     }
-//         //     else {
-//         //         std::ranges::move(first, last, pos);
-//         //     }
-//         // }
-//         // else {
-//         //     // move new elements
-//         //     std::uninitialized_move(first, last, pos);
-//         // }
+            // move new elements
+            if (copyEnd > m_size) {
+                std::ranges::move(first, first + (m_size-copyStart), pos);
+                std::uninitialized_move(first + (m_size-copyStart), last, end());
+            }
+            else {
+                std::ranges::move(first, last, pos);
+            }
+        }
+        else {
+            // move new elements
+            std::uninitialized_move(first, last, pos);
+        }
         
-//         // m_size += copyCount;
-//         // m_tail = m_size % N;
+        m_size += copyCount;
+        m_tail = m_size % N;
         
-//         return pos;
-//     }
+        return pos;
+    }
 
-// private:
-//     // ----------------------------------------
-//     // --- data
-//     // ----------------------------------------
-//     StaticObjectStore<ValueType, N, ClearOnDestroy> m_store;
-//     size_t m_size;
-//     size_t m_head;
-//     size_t m_tail;
-// };
+private:
+    // ----------------------------------------
+    // --- data
+    // ----------------------------------------
+    StaticObjectStore<ValueType, N, ClearOnDestroy> m_store;
+    size_t m_size;
+    size_t m_head;
+    size_t m_tail;
+};
 
-// static_assert(std::ranges::random_access_range<StaticQueue<int, 5>>);
-// static_assert(std::ranges::random_access_range<const StaticQueue<int, 5>>);
+static_assert(std::ranges::random_access_range<StaticQueue<int, 5>>);
+static_assert(std::ranges::random_access_range<const StaticQueue<int, 5>>);
 
 //------------------------------------------------------
 //                      Map
@@ -1412,7 +1441,7 @@ public:
     // --- data access
     // ----------------------------------------
     ValueType& operator[](const KeyType& key) override { return m_map[key]; }
-    const ValueType& operator[](const KeyType& key) const override { return m_map[key]; }
+    const ValueType& operator[](const KeyType& key) const override { return m_map.at(key); }
     ValueType& at(const KeyType& key) override { return m_map.at(key); }
     const ValueType& at(const KeyType& key) const override { return m_map.at(key); }
 
