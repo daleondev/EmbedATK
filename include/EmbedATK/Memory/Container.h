@@ -445,7 +445,7 @@ public:
 //------------------------------------------------------
 
 template<typename T>
-class IContigousContainer : public IIterable<T, std::random_access_iterator_tag>
+class ISequentialContainer : public IIterable<T, std::random_access_iterator_tag>
 {
 public:
     // ----------------------------------------
@@ -459,7 +459,7 @@ public:
     // ----------------------------------------
     // --- constructors/destructors
     // ----------------------------------------
-    virtual ~IContigousContainer() = default;
+    virtual ~ISequentialContainer() = default;
 
     // ----------------------------------------
     // --- data access
@@ -504,13 +504,13 @@ public:
 //------------------------------------------------------
 
 template<typename T>
-class IVector : public IContigousContainer<T>
+class IVector : public ISequentialContainer<T>
 {
 public:
     // ----------------------------------------
     // --- types
     // ----------------------------------------
-    using Container     = IContigousContainer<T>;
+    using Container     = ISequentialContainer<T>;
     using ValueType     = Container::ValueType;
     using Iterator      = Container::Iterator;
     using ConstIterator = Container::ConstIterator;
@@ -941,13 +941,13 @@ static_assert(std::ranges::random_access_range<const StaticVector<int, 5>>);
 //------------------------------------------------------
 
 template<typename T>
-class IQueue : public IContigousContainer<T>
+class IQueue : public ISequentialContainer<T>
 {
 public:
     // ----------------------------------------
     // --- types
     // ----------------------------------------
-    using Container     = IContigousContainer<T>;
+    using Container     = ISequentialContainer<T>;
     using ValueType     = Container::ValueType;
     using Iterator      = Container::Iterator;
     using ConstIterator = Container::ConstIterator;
