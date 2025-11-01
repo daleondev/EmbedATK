@@ -937,6 +937,8 @@ public:
     // --- manipulation
     // ----------------------------------------
     virtual void clear() noexcept = 0;
+    virtual void resize(size_t size) = 0;
+    virtual void resize(size_t size, const ValueType& value) = 0;
     virtual bool push(const ValueType& value) = 0;
     virtual bool push(ValueType&& value) = 0;
     virtual std::optional<ValueType> pop() = 0;
@@ -1155,57 +1157,76 @@ public:
         m_tail = 0;
     }
 
-    template<size_t M = N>
-    void swap(StaticQueue<ValueType, M>& other)
+    void resize(size_t size) override
     {
-        if (size() > other.capacity() || other.size() > capacity()) 
-            throw std::length_error("Invalid queue sizes for swap");
+        if (size > N) throw std::length_error("Initial size exceeds static capacity"); 
+        if (size == m_size) return;
 
-        const auto minSize = std::min(m_size, other.m_size);
-        std::swap_ranges(other.begin(), other.begin()+minSize, begin());
-
-        if (other.m_size > m_size) {
-            for (size_t i = m_size; i < other.m_size; ++i) {
-                std::construct_at(&(*this)[i], std::move(other[i]));
-                other.m_store.destroy((other.m_head+i)%N, 1);
+        auto tail = (m_head + size) % N;
+        if (size > m_size) {
+            if (m_tail > tail) {
+                m_store.construct(m_tail, N-m_tail);
+                m_store.construct(0, tail);
+            } else {
+                m_store.construct(m_tail, tail-m_tail);
             }
         }
-        else if (m_size > other.m_size) {
-            for (size_t i = other.m_size; i < m_size; ++i) {
-                std::construct_at(&other[i], std::move((*this)[i]));
-                m_store.destroy((m_head+i)%N, 1);
+        else {
+            if (tail > m_tail) {
+                m_store.destroy(tail, N-tail);
+                m_store.destroy(0, m_tail);
+            } else {
+                m_store.destroy(tail, m_tail-tail);
             }
         }
-        
-        std::swap(m_size, other.m_size);
-        m_tail = (m_head+m_size) % N;
-        other.m_tail = (other.m_head+other.m_size) % N;
+        m_size = size;
+        m_tail = tail;
+    }
+
+    void resize(size_t size, const ValueType& value) override
+    {
+        if (size > N) throw std::length_error("Initial size exceeds static capacity"); 
+        if (size == m_size) return;
+
+        auto tail = (m_head + size) % N;
+        if (size > m_size) {
+            if (m_tail > tail) {
+                m_store.uninitializedFill(m_tail, N-m_tail, value);
+                m_store.uninitializedFill(0, tail, value);
+            } else {
+                m_store.uninitializedFill(m_tail, tail-m_tail, value);
+            }
+        }
+        else {
+            if (tail > m_tail) {
+                m_store.destroy(tail, N-tail);
+                m_store.destroy(0, m_tail);
+            } else {
+                m_store.destroy(tail, m_tail-tail);
+            }
+        }
+        m_size = size;
+        m_tail = tail;
     }
 
     void swap(IQueue<ValueType>& other) override
     {
-        // if (size() > other.capacity() || other.size() > capacity()) 
-        //     throw std::length_error("Invalid queue sizes for swap");
+        if (size() > other.capacity() || other.size() > capacity()) 
+            throw std::length_error("Invalid queue sizes for swap");
 
-        // const auto minSize = std::min(size(), other.size());
-        // std::swap_ranges(other.begin(), other.begin()+minSize, begin());
+        const auto minSize = std::min(size(), other.size());
+        std::ranges::swap_ranges(other | std::views::take(minSize), *this | std::views::take(minSize));
 
-        // if (other.size() > size()) {
-        //     for (size_t i = size(); i < other.size(); ++i) {
-        //         std::construct_at(&(*this)[i], std::move(other[i]));
-        //         other.m_store.destroy((other.m_head+i)%other.capacity(), 1);
-        //     }
-        // }
-        // else if (size() > other.size()) {
-        //     for (size_t i = other.size(); i < size(); ++i) {
-        //         std::construct_at(&other[i], std::move((*this)[i]));
-        //         m_store.destroy((m_head+i)%capacity(), 1);
-        //     }
-        // }
-        
-        // std::swap(m_size, other.m_size);
-        // m_tail = (m_head+m_size) % capacity();
-        // other.m_tail = (other.m_head+other.size()) % other.capacity();
+        if (other.size() > size()) {
+            resize(other.size());
+            std::ranges::move(other | std::views::drop(minSize), begin() + minSize);
+            other.resize(minSize);
+        }
+        else if (size() > other.size()) {
+            other.resize(size());
+            std::ranges::move(*this | std::views::drop(minSize), other.begin() + minSize);
+            resize(minSize);
+        }
     }
 
     template<class... Args>

@@ -111,6 +111,7 @@
         "reflect": "cpp",
         "*.md": "cpp",
         "future": "cpp",
-        "print": "cpp"
+        "print": "cpp",
+        "__functional_03": "cpp"
     }
 }
