@@ -990,7 +990,7 @@ public:
     // ----------------------------------------
     // --- data access
     // ----------------------------------------
-    virtual std::optional<ValueType> peek() const = 0;
+    virtual std::optional<std::reference_wrapper<const ValueType>> peek() const = 0;
 
     // ----------------------------------------
     // --- manipulation
@@ -1026,6 +1026,7 @@ public:
 };
 
 template<typename T, size_t N>
+requires std::default_initializable<T>
 class StaticStdQueue : public IQueue<T>
 {
 public:
@@ -1092,7 +1093,7 @@ public:
     ValueType& at(size_t i) override { return m_queue.at(i); }
     const ValueType& at(size_t i) const override { return m_queue.at(i); }
 
-    std::optional<ValueType> peek() const override
+    std::optional<std::reference_wrapper<const ValueType>> peek() const override
     { 
         if (empty()) return std::nullopt;
         return m_queue.front();
@@ -1138,9 +1139,16 @@ public:
 
     virtual bool push(const ValueType& value) override 
     { 
-        if (full()) return false;
-        m_queue.push_back(value); 
-        return true;
+        if constexpr (std::is_copy_constructible_v<ValueType>)
+        {
+            if (full()) return false;
+            m_queue.push_back(value); 
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     virtual bool push(ValueType&& value) override 
@@ -1356,7 +1364,7 @@ public:
         return (*this)[index];
     }
 
-    std::optional<ValueType> peek() const override
+    std::optional<std::reference_wrapper<const ValueType>> peek() const override
     {
         if (empty()) return std::nullopt;
         return data()[m_head];

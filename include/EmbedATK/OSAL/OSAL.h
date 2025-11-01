@@ -171,7 +171,7 @@ private:
 #define OSAL_MUTEX              StaticPolymorphicStore<OSAL::Mutex, OSAL::mutexAllocData()>
 #define OSAL_THREAD             StaticPolymorphicStore<OSAL::Thread, OSAL::threadAllocData()>
 #define OSAL_CYCLIC_THREAD      StaticPolymorphicStore<OSAL::CyclicThread, OSAL::cyclicThreadAllocData()>
-#define OSAL_MESSAGE_QUEUE      StaticPolymorphicStore<OSAL::CyclicThread, OSAL::cyclicThreadAllocData()>
+#define OSAL_MESSAGE_QUEUE(T, N) StaticPolymorphicStore<OSAL::MessageQueue<T, N>, OSAL::messageQueueAllocData<T, N>()>
 
 #define OSAL_TIMER_DYN          DynamicPolymorphic<OSAL::Timer>
 #define OSAL_MUTEX_DYN          DynamicPolymorphic<OSAL::Mutex>

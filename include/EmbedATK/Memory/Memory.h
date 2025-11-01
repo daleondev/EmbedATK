@@ -11,7 +11,7 @@ struct AllocData
 };
 
 template<typename T>
-static constexpr AllocData allocData() 
+static consteval AllocData allocData() 
 { 
     return AllocData
     { 

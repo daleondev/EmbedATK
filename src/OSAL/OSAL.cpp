@@ -31,11 +31,11 @@ void OSAL::createMessageQueue(IPolymorphic<OSAL::MessageQueue<T, N>>& queue)
     queue.template construct<ImplType>(); 
 }
 
-// #include <format>
-// #if defined(EATK_DISABLE_LOGGING) && defined(__cpp_lib_format)
-// #include "KitCAT/Core/Logger.h"
-// template void OSAL::createMessageQueue(IPolymorphic<OSAL::MessageQueue<PmrUniquePtr<ILogger::LogData>, 1024>>&);
-// #endif
+#include <format>
+#if !defined(EATK_DISABLE_LOGGING) && defined(__cpp_lib_format)
+#include "EmbedATK/Core/Logger.h"
+template void OSAL::createMessageQueue(IPolymorphic<OSAL::MessageQueue<ILogger::LogData*, 1024>>&);
+#endif
 
 // #include "Ecat/EcatIO.h"
 // template void OSAL::createMessageQueue(IPolymorphic<OSAL::MessageQueue<EcatIO::IOReq, EcatIO::MSG_QUEUE_SIZE>>&);

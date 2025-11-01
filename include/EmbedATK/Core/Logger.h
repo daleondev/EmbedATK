@@ -148,7 +148,7 @@
             OSAL::createThread(m_thread, g_loggerStack, &Logger::loggingTask, this);
             m_thread.get()->setPriority(10);
             
-            OSAL::createMessageQueue<StaticUniquePtr<LogData>, MSG_QUEUE_SIZE>(m_queue);
+            OSAL::createMessageQueue<LogData*, MSG_QUEUE_SIZE>(m_queue);
 
             m_thread.get()->start();
         }
@@ -164,16 +164,32 @@
                 "", 
                 ""
             );
-            m_queue.get()->push(std::move(abortMsg));
+            m_queue.get()->push(abortMsg.release());
 
             m_thread.get()->shutdown();
         }
 
     private:
+        template<typename ...Args>
+        LogData* createMessage(Args&&... args)
+        {
+            static constexpr auto alloc = allocData<LogData>();
+            auto* ptr = static_cast<LogData*>(m_msgPool.allocate(alloc.size, alloc.align));
+            std::construct_at<LogData>(ptr, std::forward<Args>(args)...);
+            return ptr;
+        }
+
+        void destroyMessage(LogData* ptr)
+        {
+            static constexpr auto alloc = allocData<LogData>();
+            std::destroy_at(ptr);
+            m_msgPool.deallocate(ptr, alloc.size, alloc.align);
+        }
+
         void addMessage(const LogLevel level, const Timestamp& timestamp, std::string&& location, std::string&& message) override
         {
-            auto msg = make_static_unique<LogData>(&m_msgPool, level, timestamp, std::move(location), std::move(message));
-            m_queue.get()->push(std::move(msg));
+            auto* msg = createMessage(level, timestamp, std::move(location), std::move(message));
+            m_queue.get()->push(msg);
         }
 
         void printMessage(const LogLevel level, const Timestamp& timestamp, const std::string& location, const std::string& message) const override
@@ -200,19 +216,21 @@
 
         void loggingTask()
         {
-            StaticStdQueue<StaticUniquePtr<LogData>, 64> localQueue;
+            StaticQueue<LogData*, 64> localQueue;
 
             m_running = true;
             while (m_running || !m_queue.get()->empty()) {
                 if (!m_queue.get()->popAvail(localQueue))
                     continue;
 
-                for (const auto& msg : localQueue) {
+                for (LogData* msg : localQueue) {
                     const auto& [level, timestamp, location, message] = *msg;
                     if (level == LogLevel::Abort)
                         m_running = false;
                     else
                         printMessage(level, timestamp, location, message);
+
+                    destroyMessage(msg);
                 }
                 localQueue.clear();
             }
@@ -220,9 +238,9 @@
 
         std::atomic_bool m_running;
         OSAL_THREAD m_thread;
-        OSAL_MESSAGE_QUEUE m_queue;
+        OSAL_MESSAGE_QUEUE(LogData*, MSG_QUEUE_SIZE) m_queue;
 
-        StaticBlockPool<LogData, MSG_QUEUE_SIZE> m_msgPool;
+        StaticBlockPool<MSG_QUEUE_SIZE, allocData<LogData>()> m_msgPool;
     };
 
 #else
