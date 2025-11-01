@@ -167,6 +167,7 @@ public:
         return m_self.get()->at(n);
     }
 
+    // unsafe
     template<IsIterator IterT>
     operator IterT()
     {
@@ -358,12 +359,7 @@ private:
 
         void cloneToConst(IPolymorphic<typename AnyIterator<const T, Category>::Concept>& other) const override
         {
-            if constexpr (std::is_const_v<T>) {
-                cloneTo(other);
-            }
-            else {
-                other.template construct<typename AnyIterator<const T, Category>::template Model<IterT>>(iter);
-            }
+            other.template construct<typename AnyIterator<const T, Category>::template Model<IterT>>(iter);
         }
 
         void transferTo(IPolymorphic<Concept>& other) const override 
@@ -682,12 +678,15 @@ public:
 
     Iterator erase(ConstIterator pos) override 
     {
-        return Iterator(m_vector.erase(pos));
+        const auto index = std::distance(ConstIterator(begin()), pos);
+        return erase(index);
     }
 
     Iterator erase(ConstIterator first, ConstIterator last) override 
     {
-        return Iterator(m_vector.erase(first, last));
+        const auto index = std::distance(ConstIterator(begin()), first);
+        const auto count = std::distance(first, last);
+        return erase(index, count);
     }
 
     template<class... Args>
@@ -979,8 +978,8 @@ public:
     virtual bool push(const ValueType& value) = 0;
     virtual bool push(ValueType&& value) = 0;
     virtual std::optional<ValueType> pop() = 0;
-    virtual Iterator insert(Iterator pos, Iterator first, Iterator last) = 0;
-    virtual Iterator insert(Iterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) = 0;
+    virtual Iterator insert(ConstIterator pos, Iterator first, Iterator last) = 0;
+    virtual Iterator insert(ConstIterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) = 0;
 
     void swap(IQueue<ValueType>& other) 
     { 
@@ -1138,18 +1137,22 @@ public:
         return std::move(value);
     }
 
-    virtual Iterator insert(Iterator pos, Iterator first, Iterator last) override 
+    virtual Iterator insert(ConstIterator pos, Iterator first, Iterator last) override 
     { 
         const auto copyCount = std::distance(first, last);
         if (m_queue.size() + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
-        return Iterator(m_queue.insert(pos, first, last));
+
+        const auto index = std::distance(ConstIterator(begin()), pos);
+        return Iterator(m_queue.insert(begin()+index, first, last));
     }
 
-    virtual Iterator insert(Iterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) override 
+    virtual Iterator insert(ConstIterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) override 
     { 
         const auto copyCount = std::distance(first, last);
         if (m_queue.size() + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
-        return Iterator(m_queue.insert(pos, first, last));
+
+        const auto index = std::distance(ConstIterator(begin()), pos);
+        return Iterator(m_queue.insert(begin()+index, first, last));
     }
 
     template<class... Args>
@@ -1166,6 +1169,9 @@ private:
     StaticDequePool<ValueType, N> m_pool;
     std::pmr::deque<ValueType> m_queue;
 };
+
+static_assert(std::ranges::random_access_range<StaticStdQueue<int, 5>>);
+static_assert(std::ranges::random_access_range<const StaticStdQueue<int, 5>>);
 
 template<typename T, size_t N, bool ClearOnDestroy = true>
 requires std::default_initializable<T>
@@ -1458,61 +1464,63 @@ public:
         return std::move(value);
     }
 
-    Iterator insert(Iterator pos, Iterator first, Iterator last) override
+    Iterator insert(ConstIterator pos, Iterator first, Iterator last) override
     {
-        const auto copyStart = std::distance(begin(), pos);
+        const auto copyStart = std::distance(ConstIterator(begin()), pos);
         const auto copyCount = std::distance(first, last);
         const auto copyEnd = copyStart + copyCount;
 
-        if (copyCount == 0) return pos;
+        auto mutPos = Iterator(begin()+copyStart);
+        if (copyCount == 0) return mutPos;
         if (m_size + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
 
-        if (pos != end()) {
+        if (pos != ConstIterator(end())) {
             // shift existing elements 
             std::uninitialized_move_n(end()-copyCount, copyCount, end());
-            std::ranges::move(pos, end()-copyCount, begin()+copyEnd);
+            std::ranges::move(mutPos, end()-copyCount, begin()+copyEnd);
 
             // copy new elements
             if (copyEnd > m_size) {
-                std::copy_n(first, m_size-copyStart, pos);
+                std::copy_n(first, m_size-copyStart, mutPos);
                 std::uninitialized_copy(first + (m_size-copyStart), last, end());
             }
             else {
-                std::copy(first, last, pos);
+                std::copy(first, last, mutPos);
             }
         }
         else {
             // copy new elements
-            std::uninitialized_copy(first, last, pos);
+            std::uninitialized_copy(first, last, mutPos);
         }
         
         m_size += copyCount;
         m_tail = (m_head + m_size) % N;
         
-        return pos;
+        return mutPos;
     }
 
-    Iterator insert(Iterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) override
+    Iterator insert(ConstIterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) override
     {
-        const auto copyStart = std::distance(begin(), pos);
+        const auto copyStart = std::distance(ConstIterator(begin()), pos);
         const auto copyCount = std::distance(first, last);
         const auto copyEnd = copyStart + copyCount;
 
-        if (copyCount == 0) return pos;
+        auto mutPos = Iterator(begin()+copyStart);
+        if (copyCount == 0) return mutPos;
         if (m_size + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
 
-        if (pos != end()) {
+        if (pos != ConstIterator(end())) {
             // shift existing elements 
             std::uninitialized_move_n(end()-copyCount, copyCount, end());
-            std::ranges::move(pos, end()-copyCount, begin()+copyEnd);
+            std::ranges::move(mutPos, end()-copyCount, begin()+copyEnd);
 
             // move new elements
             if (copyEnd > m_size) {
-                std::ranges::move(first, first + (m_size-copyStart), pos);
+                std::ranges::move(first, first + (m_size-copyStart), mutPos);
                 std::uninitialized_move(first + (m_size-copyStart), last, end());
             }
             else {
-                std::ranges::move(first, last, pos);
+                std::ranges::move(first, last, mutPos);
             }
         }
         else {
@@ -1523,7 +1531,7 @@ public:
         m_size += copyCount;
         m_tail = (m_head + m_size) % N;
         
-        return pos;
+        return mutPos;
     }
 
     template<class... Args>
