@@ -942,9 +942,28 @@ public:
     virtual bool push(const ValueType& value) = 0;
     virtual bool push(ValueType&& value) = 0;
     virtual std::optional<ValueType> pop() = 0;
-    virtual void swap(IQueue<ValueType>& other) = 0;
     virtual Iterator insert(Iterator pos, Iterator first, Iterator last) = 0;
     virtual Iterator insert(Iterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) = 0;
+
+    void swap(IQueue<ValueType>& other) 
+    { 
+        if (this->size() > other.capacity() || other.size() > capacity()) 
+            throw std::length_error("Invalid queue sizes for swap");
+
+        const auto minSize = std::min(this->size(), other.size());
+        std::ranges::swap_ranges(other | std::views::take(minSize), *this | std::views::take(minSize));
+
+        if (other.size() > this->size()) {
+            resize(other.size());
+            std::ranges::move(other | std::views::drop(minSize), this->begin() + minSize);
+            other.resize(minSize);
+        }
+        else if (this->size() > other.size()) {
+            other.resize(this->size());
+            std::ranges::move(*this | std::views::drop(minSize), other.begin() + minSize);
+            resize(minSize);
+        }
+    }
 };
 
 template<typename T, size_t N>
@@ -979,16 +998,12 @@ public:
     }
 
     StaticStdQueue(const StaticStdQueue& other) 
-        : m_pool{}, m_queue{&m_pool}
-    {
-        m_queue = other.m_queue;
-    }
+        : m_pool{}, m_queue{other.m_queue, &m_pool}
+    {}
 
     StaticStdQueue(StaticStdQueue&& other) noexcept 
-        : m_pool{}, m_queue{&m_pool}
-    {
-        m_queue = std::move(other.m_queue);
-    }
+        : m_pool{}, m_queue{std::move(other.m_queue), &m_pool}
+    {}
 
     ~StaticStdQueue() = default;
 
@@ -1030,7 +1045,9 @@ public:
     StaticStdQueue& operator=(const StaticStdQueue& other)
     {
         if (this != &other) {
-            m_queue = other.m_queue;
+            m_queue.clear();
+            m_queue.resize(other.m_queue.size());
+            std::ranges::copy(other.m_queue, m_queue.begin());
         }
         return *this;
     }
@@ -1038,7 +1055,10 @@ public:
     StaticStdQueue& operator=(StaticStdQueue&& other) noexcept
     {
         if (this != &other) {
-            m_queue = std::move(other.m_queue);
+            m_queue.clear();
+            m_queue.resize(other.m_queue.size());
+            std::ranges::move(other.m_queue, m_queue.begin());
+            other.m_queue.clear();
         }
         return *this;
     }
@@ -1069,18 +1089,17 @@ public:
         return std::move(value);
     }
 
-    virtual void swap(IQueue<ValueType>& other) override 
-    { 
-
-    }
-
     virtual Iterator insert(Iterator pos, Iterator first, Iterator last) override 
     { 
+        const auto copyCount = std::distance(first, last);
+        if (m_queue.size() + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
         return Iterator(m_queue.insert(pos, first, last));
     }
 
     virtual Iterator insert(Iterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) override 
     { 
+        const auto copyCount = std::distance(first, last);
+        if (m_queue.size() + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
         return Iterator(m_queue.insert(pos, first, last));
     }
 
@@ -1359,26 +1378,6 @@ public:
         }
         m_size = size;
         m_tail = tail;
-    }
-
-    void swap(IQueue<ValueType>& other) override
-    {
-        if (size() > other.capacity() || other.size() > capacity()) 
-            throw std::length_error("Invalid queue sizes for swap");
-
-        const auto minSize = std::min(size(), other.size());
-        std::ranges::swap_ranges(other | std::views::take(minSize), *this | std::views::take(minSize));
-
-        if (other.size() > size()) {
-            resize(other.size());
-            std::ranges::move(other | std::views::drop(minSize), begin() + minSize);
-            other.resize(minSize);
-        }
-        else if (size() > other.size()) {
-            other.resize(size());
-            std::ranges::move(*this | std::views::drop(minSize), other.begin() + minSize);
-            resize(minSize);
-        }
     }
 
     bool push(const ValueType& value) override

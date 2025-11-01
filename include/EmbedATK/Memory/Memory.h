@@ -702,7 +702,7 @@ private:
         return this == &other;
     }
 
-    StaticBuffer<MapSize == InitialMapSize ? MapSize : 2*MapSize, alignof(uintptr_t)> m_mapBuff;
+    StaticBuffer<MapSize == (InitialMapSize*sizeof(uintptr_t)) ? MapSize : 2*MapSize, alignof(uintptr_t)> m_mapBuff;
     StaticBuffer<DataSize, alignof(T)> m_blockBuff;
     FreeBlock* m_freeBlocks;
 };

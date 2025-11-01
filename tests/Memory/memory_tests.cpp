@@ -481,7 +481,7 @@ TEST(StaticEntiredPoolTest, OverAllocation)
 
 TEST(StaticEntiredPoolTest, SingleAllocationBehavior)
 {
-	StaticEntiredPool<int, 10> pool;
+	StaticEntiredPool<uintptr_t, 10> pool;
 	const size_t total_size = 10 * sizeof(uintptr_t);
 
 	void* p1 = pool.allocate(total_size, alignof(uintptr_t));
@@ -492,7 +492,7 @@ TEST(StaticEntiredPoolTest, SingleAllocationBehavior)
 
 TEST(StaticEntiredPoolTest, InvalidDeallocation)
 {
-	StaticEntiredPool<int, 5> pool;
+	StaticEntiredPool<double, 5> pool;
 	const size_t total_size = 5 * sizeof(double);
 
 	void* p = pool.allocate(total_size, alignof(double));
