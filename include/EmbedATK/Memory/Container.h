@@ -10,6 +10,7 @@
 using AllIterators = std::tuple<
     // --- Container Iterators ---
     std::vector<int>::iterator,
+    std::vector<bool>::iterator,
     std::list<int>::iterator,
     std::deque<int>::iterator,
     std::string::iterator,
@@ -464,8 +465,6 @@ public:
     // ----------------------------------------
     // --- data access
     // ----------------------------------------
-    virtual T* data() = 0;
-    virtual const T* data() const = 0;
     virtual T& operator[](const std::size_t i) = 0;
     virtual const T& operator[](const std::size_t i) const = 0;
     virtual constexpr T& at(size_t index) = 0;
@@ -499,18 +498,42 @@ public:
     virtual const ValueType& at(const KeyType& key) const = 0;
 };
 
-//------------------------------------------------------
-//                      Vector
-//------------------------------------------------------
-
 template<typename T>
-class IVector : public ISequentialContainer<T>
+class IContigousContainer : public ISequentialContainer<T>
 {
 public:
     // ----------------------------------------
     // --- types
     // ----------------------------------------
     using Container     = ISequentialContainer<T>;
+    using ValueType     = Container::ValueType;
+    using Iterator      = Container::Iterator;
+    using ConstIterator = Container::ConstIterator;
+
+    // ----------------------------------------
+    // --- constructors/destructors
+    // ----------------------------------------
+    virtual ~IContigousContainer() = default;
+
+    // ----------------------------------------
+    // --- data access
+    // ----------------------------------------
+    virtual T* data() = 0;
+    virtual const T* data() const = 0;
+};
+
+//------------------------------------------------------
+//                      Vector
+//------------------------------------------------------
+
+template<typename T>
+class IVector : public IContigousContainer<T>
+{
+public:
+    // ----------------------------------------
+    // --- types
+    // ----------------------------------------
+    using Container     = IContigousContainer<T>;
     using ValueType     = Container::ValueType;
     using Iterator      = Container::Iterator;
     using ConstIterator = Container::ConstIterator;
@@ -1064,8 +1087,6 @@ public:
     // ----------------------------------------
     // --- data access
     // ----------------------------------------
-    ValueType* data() override { return &m_queue.front(); }
-    const ValueType* data() const override { return &m_queue.front(); }
     ValueType& operator[](const size_t i) noexcept override { return m_queue[i]; }
     const ValueType& operator[](const size_t i) const noexcept override { return m_queue[i]; }
     ValueType& at(size_t i) override { return m_queue.at(i); }
