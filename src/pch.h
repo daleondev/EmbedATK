@@ -30,3 +30,5 @@
 #include <iterator>
 #include <filesystem>
 #include <regex>
+
+#include "osal_platform.h"
