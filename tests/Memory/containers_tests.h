@@ -1079,3 +1079,26 @@ TEST_F(ContainersTest, Queue_InsertMove_Interoperability_StdToStatic)
 	EXPECT_EQ(q1[3], 20);
 	EXPECT_EQ(q1[4], 30);
 }
+
+TEST_F(ContainersTest, StaticVector_Erase_ConstIterator)
+{
+    StaticVector<int, 10> vec = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    auto it = vec.begin();
+    std::advance(it, 2);
+    vec.erase(it);
+    ASSERT_EQ(vec.size(), 9);
+    ASSERT_EQ(vec[0], 0);
+    ASSERT_EQ(vec[1], 1);
+    ASSERT_EQ(vec[2], 3);
+
+    auto first = vec.begin();
+    std::advance(first, 3);
+    auto last = first;
+    std::advance(last, 2);
+    vec.erase(first, last);
+    ASSERT_EQ(vec.size(), 7);
+    ASSERT_EQ(vec[0], 0);
+    ASSERT_EQ(vec[1], 1);
+    ASSERT_EQ(vec[2], 3);
+    ASSERT_EQ(vec[3], 6);
+}

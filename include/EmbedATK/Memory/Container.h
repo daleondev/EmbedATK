@@ -315,6 +315,9 @@ private:
 
         difference_type difference(const Concept* other) const override
         {
+            if (!other || type() != other->type()) {
+                throw std::logic_error("iterators with different types are not comparable");
+            }
             if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category, std::random_access_iterator_tag>)
                 return iter - static_cast<const Model<IterT>*>(other)->iter;
             else
@@ -323,6 +326,9 @@ private:
 
         bool isLess(const Concept* other) const override
         {
+            if (!other || type() != other->type()) {
+                return false;
+            }
             if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category, std::random_access_iterator_tag>)
                 return iter < static_cast<const Model<IterT>*>(other)->iter;
             else
@@ -901,13 +907,13 @@ public:
 
     Iterator erase(ConstIterator pos) override
     {
-        const auto index = std::distance(begin(), pos);
+        const auto index = std::distance(ConstIterator(begin()), pos);
         return erase(index);
     }
 
     Iterator erase(ConstIterator first, ConstIterator last) override
     {
-        const auto index = std::distance(begin(), first);
+        const auto index = std::distance(ConstIterator(begin()), first);
         const auto count = std::distance(first, last);
         return erase(index, count);
     }
