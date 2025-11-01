@@ -67,16 +67,45 @@ target_compile_options(EmbedATK
         $<$<CXX_COMPILER_ID:MSVC>:/FI"${CMAKE_CURRENT_SOURCE_DIR}/src/pch.h">
 )
 
-# --- Samples ---
-option(BUILD_SAMPLES "Build the sample executables." ON)
-if(BUILD_SAMPLES)
-    add_subdirectory(samples)
-endif()
+# --- Platform Specific Definitions ---
+set(X86_ARCH_REGEX "^(x86_64|AMD64)$")
+set(ARM_ARCH_REGEX "^(arm|aarch64|armv7l|arm64)$")
 
-# --- Tests ---
-option(BUILD_TESTS "Build the tests." OFF)
-if(BUILD_TESTS)
-    add_subdirectory(tests)
+if(WIN32)
+    target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_WINDOWS)
+elseif(APPLE)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "${X86_ARCH_REGEX}")
+        target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_MACOS)
+        target_include_directories(EmbedATK PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/platform/macos/src/OSAL)
+    else()
+        message(FATAL_ERROR "Unsupported Apple processor: ${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "${X86_ARCH_REGEX}")
+        target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_LINUX)
+        target_include_directories(EmbedATK PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/src/OSAL)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "${ARM_ARCH_REGEX}")
+        target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_LINUX_ARM)
+        target_include_directories(EmbedATK PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux_arm/src/OSAL)
+    else()
+        message(FATAL_ERROR "Unsupported Linux processor: ${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Generic")
+    message(STATUS "Configuring for a generic bare-metal target.")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "${ARM_ARCH_REGEX}")
+        if(NOT TARGET_PLATFORM)
+            message(FATAL_ERROR "TARGET_PLATFORM must be specified on the command line.")
+        endif()
+
+        target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_ARM)
+        include("${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/${TARGET_PLATFORM}/${TARGET_PLATFORM}.cmake")
+        target_include_directories(EmbedATK PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/src/OSAL)
+        target_link_libraries(EmbedATK PUBLIC Platform)
+    else()
+        message(FATAL_ERROR "Unsupported processor for generic target.")
+    endif()
+else()
+    message(FATAL_ERROR "Unsupported Operating System: ${CMAKE_SYSTEM_NAME}")
 endif()
 
 # --- Source Properties/Groups for IDE ---
@@ -93,3 +122,15 @@ source_group(
     PREFIX "Header Files"
     FILES ${HEADERS}
 )
+
+# --- Samples ---
+option(BUILD_SAMPLES "Build the sample executables." ON)
+if(BUILD_SAMPLES)
+    add_subdirectory(samples)
+endif()
+
+# --- Tests ---
+option(BUILD_TESTS "Build the tests." OFF)
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()

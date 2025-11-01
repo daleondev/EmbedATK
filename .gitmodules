@@ -4,3 +4,12 @@
 [submodule "external/reflect"]
 	path = external/reflect
 	url = https://github.com/qlibs/reflect.git
+[submodule "external/eclipse_threadx/threadx"]
+	path = external/eclipse_threadx/threadx
+	url = https://github.com/eclipse-threadx/threadx.git
+[submodule "external/eclipse_threadx/netxduo"]
+	path = external/eclipse_threadx/netxduo
+	url = https://github.com/eclipse-threadx/netxduo.git
+[submodule "external/eclipse_threadx/filex"]
+	path = external/eclipse_threadx/filex
+	url = https://github.com/eclipse-threadx/filex.git
