@@ -97,8 +97,11 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Generic")
             message(FATAL_ERROR "TARGET_PLATFORM must be specified on the command line.")
         endif()
 
+        set(THREADX_ARCH cortex_m7)
+        set(THREADX_TOOLCHAIN gnu)
+        
         target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_ARM)
-        include("${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/${TARGET_PLATFORM}/${TARGET_PLATFORM}.cmake")
+        include("${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/${TARGET_PLATFORM}.cmake")
         target_include_directories(EmbedATK PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/include/OSAL)
         target_link_libraries(EmbedATK PUBLIC Platform)
     else()

@@ -15,6 +15,7 @@
             ],
             "defines": ["EATK_ENABLE_ASSERTS", "EATK_PLATFORM_LINUX", "__cpp_lib_source_location", "__cpp_lib_format"],
             "compilerPath": "/usr/bin/g++",
+            "cStandard": "c17",
             "cppStandard": "c++23",
             "intelliSenseMode": "gcc-x64",
             "forcedInclude": ["${workspaceFolder}/src/pch.h"]
@@ -35,8 +36,29 @@
             ],
             "defines": ["EATK_ENABLE_ASSERTS", "EATK_PLATFORM_LINUX", "__cpp_lib_source_location", "__cpp_lib_format"],
             "compilerPath": "/home/david/development/llvm-install/bin/clang++",
+            "cStandard": "c17",
             "cppStandard": "c++23",
             "intelliSenseMode": "clang-x64",
+            "forcedInclude": ["${workspaceFolder}/src/pch.h"]
+        },
+        {
+            "name": "Arm",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/platform",
+                "${workspaceFolder}/platform/arm/include/OSAL",
+                "${workspaceFolder}/external/magic_enum/include",
+                "${workspaceFolder}/external/reflect",
+                "${workspaceFolder}/external/eclipse_threadx/threadx/common/inc",
+                "${workspaceFolder}/external/eclipse_threadx/threadx/ports/cortex_m7/gnu/inc"
+            ],
+            "defines": ["EATK_ENABLE_ASSERTS", "EATK_PLATFORM_ARM", "__cpp_lib_source_location", "__cpp_lib_format"],
+            "compilerPath": "/opt/st/stm32cubeide_1.19.0/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.linux64_1.0.0.202410170706/tools/bin/arm-none-eabi-gcc",
+            "cStandard": "c17",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "linux-gcc-arm",
             "forcedInclude": ["${workspaceFolder}/src/pch.h"]
         }
     ],

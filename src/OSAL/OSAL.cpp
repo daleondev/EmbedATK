@@ -7,7 +7,7 @@
 #elif defined(EATK_PLATFORM_LINUX)
     #include "linux/src/OSAL/LinuxOSAL.h"
 #elif defined(EATK_PLATFORM_ARM)
-    #include "threadx_arm/src/OSAL/ArmOSAL.h"
+    #include "arm/src/OSAL/ArmOSAL.h"
 #else
     #error "Unsupported Platform"
 #endif
