@@ -305,37 +305,72 @@ public:
 
     void construct(size_t index, size_t count) override
     {
-        std::uninitialized_value_construct_n(data() + index, count);
+        if constexpr (std::is_default_constructible_v<ValueType>) {
+            std::uninitialized_value_construct_n(data() + index, count);
+        }
+        else {
+            throw std::logic_error("default construction not allowed");
+        }
     }
 
     void fill(size_t index, size_t count, const ValueType& value) override
     {
-        std::ranges::fill(m_data | std::views::drop(index) | std::views::take(count), value);
+        if constexpr (std::is_copy_assignable_v<ValueType>) {
+            std::ranges::fill(m_data | std::views::drop(index) | std::views::take(count), value);
+        }
+        else {
+            throw std::logic_error("copying not allowed");
+        }
     }
 
     void clone(const Handle& other, size_t index, size_t count) override
     {
-        std::ranges::copy(other | std::views::drop(index) | std::views::take(count), begin()+index);
+        if constexpr (std::is_copy_assignable_v<ValueType>) {
+            std::ranges::copy(other | std::views::drop(index) | std::views::take(count), begin()+index);
+        }
+        else {
+            throw std::logic_error("copying not allowed");
+        }
     }
 
     void transfer(Handle&& other, size_t index, size_t count) override
     {
-        std::ranges::move(other | std::views::drop(index) | std::views::take(count), begin()+index);
+        if constexpr (std::is_move_assignable_v<ValueType>) {
+            std::ranges::move(other | std::views::drop(index) | std::views::take(count), begin()+index);
+        }
+        else {
+            throw std::logic_error("moving not allowed");
+        }
     }
 
     void uninitializedFill(size_t index, size_t count, const ValueType& value) override
     {
-        std::uninitialized_fill_n(data() + index, count, value);
+        if constexpr (std::is_copy_constructible_v<ValueType>) {
+            std::uninitialized_fill_n(data() + index, count, value);
+        }
+        else {
+            throw std::logic_error("copying not allowed");
+        }
     }
 
     void uninitializedClone(const IObjectStore<ValueType>& other, size_t index, size_t count) override
     {
-        std::uninitialized_copy_n(other.data() + index, count, begin() + index);
+        if constexpr (std::is_copy_constructible_v<ValueType>) {
+            std::uninitialized_copy_n(other.data() + index, count, begin() + index);
+        }
+        else {
+            throw std::logic_error("copying not allowed");
+        }
     }
 
     void uninitializedTransfer(IObjectStore<ValueType>&& other, size_t index, size_t count) override
     {
-        std::uninitialized_move_n(other.data() + index, count, begin() + index);
+        if constexpr (std::is_move_constructible_v<ValueType>) {
+            std::uninitialized_move_n(other.data() + index, count, begin() + index);
+        }
+        else {
+            throw std::logic_error("moving not allowed");
+        }
     }
 
 private:

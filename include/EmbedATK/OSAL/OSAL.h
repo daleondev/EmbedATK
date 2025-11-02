@@ -132,15 +132,15 @@ public:
         virtual std::optional<SboAny> tryPop() = 0;
         virtual bool tryPopAvail(IQueue<SboAny>& data) = 0;
     protected: 
-        IObjectStore<SboAny>& m_store;
+        IObjectStore<SboAny>* m_store;
     private:
-        void setStore(IObjectStore<SboAny>& store) { m_store = store; }
+        void setStore(IObjectStore<SboAny>* store) { m_store = store; }
         friend class OSAL;
     };
     static void createMessageQueue(IPolymorphic<MessageQueue>& queue, IObjectStore<SboAny>& store)
     {
         instance().createMessageQueueImpl(queue);
-        queue.get()->setStore(store);
+        queue.get()->setStore(&store);
     }
 
     struct StaticImpl;

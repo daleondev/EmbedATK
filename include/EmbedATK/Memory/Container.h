@@ -1002,7 +1002,7 @@ public:
     virtual bool push(ValueType&& value) = 0;
     virtual std::optional<ValueType> pop() = 0;
     virtual Iterator insert(ConstIterator pos, Iterator first, Iterator last) = 0;
-    virtual Iterator insert(ConstIterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) = 0;
+    virtual Iterator insert(ConstIterator pos, std::move_iterator<Iterator> first, std::move_iterator<Iterator> last) = 0;
     virtual Iterator erase(size_t index) = 0;
     virtual Iterator erase(size_t index, size_t count) = 0;
     virtual Iterator erase(ConstIterator pos) = 0;
@@ -1179,7 +1179,7 @@ public:
         return Iterator(m_queue.insert(begin()+index, first, last));
     }
 
-    virtual Iterator insert(ConstIterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) override 
+    virtual Iterator insert(ConstIterator pos, std::move_iterator<Iterator> first, std::move_iterator<Iterator> last) override 
     { 
         const auto copyCount = std::distance(first, last);
         if (m_queue.size() + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
@@ -1428,20 +1428,30 @@ public:
 
     bool push(const ValueType& value) override
     {
-        if (full()) return false;
-        std::construct_at(&data()[m_tail], value);
-        m_tail = (m_tail + 1) % capacity();
-        m_size++;
-        return true;
+        if constexpr (std::is_copy_constructible_v<ValueType>) {
+            if (full()) return false;
+            std::construct_at(&data()[m_tail], value);
+            m_tail = (m_tail + 1) % capacity();
+            m_size++;
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
     bool push(ValueType&& value) override
     {
-        if (full()) return false;
-        std::construct_at(&data()[m_tail], std::move(value));
-        m_tail = (m_tail + 1) % capacity();
-        m_size++;
-        return true;
+        if constexpr (std::is_move_constructible_v<ValueType>) {
+            if (full()) return false;
+            std::construct_at(&data()[m_tail], std::move(value));
+            m_tail = (m_tail + 1) % capacity();
+            m_size++;
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
     std::optional<ValueType> pop() override
@@ -1456,72 +1466,82 @@ public:
 
     Iterator insert(ConstIterator pos, Iterator first, Iterator last) override
     {
-        const auto copyStart = std::distance(ConstIterator(begin()), pos);
-        const auto copyCount = std::distance(first, last);
-        const auto copyEnd = copyStart + copyCount;
+        if constexpr (std::is_copy_constructible_v<ValueType>) {
+            const auto copyStart = std::distance(ConstIterator(begin()), pos);
+            const auto copyCount = std::distance(first, last);
+            const auto copyEnd = copyStart + copyCount;
 
-        auto mutPos = Iterator(begin()+copyStart);
-        if (copyCount == 0) return mutPos;
-        if (m_size + copyCount > capacity()) throw std::length_error("Insert would exceed static queue capacity");
+            auto mutPos = Iterator(begin()+copyStart);
+            if (copyCount == 0) return mutPos;
+            if (m_size + copyCount > capacity()) throw std::length_error("Insert would exceed static queue capacity");
 
-        if (pos != ConstIterator(end())) {
-            // shift existing elements 
-            std::uninitialized_move_n(end()-copyCount, copyCount, end());
-            std::ranges::move(mutPos, end()-copyCount, begin()+copyEnd);
+            if (pos != ConstIterator(end())) {
+                // shift existing elements 
+                std::uninitialized_move_n(end()-copyCount, copyCount, end());
+                std::ranges::move(mutPos, end()-copyCount, begin()+copyEnd);
 
-            // copy new elements
-            if (copyEnd > m_size) {
-                std::copy_n(first, m_size-copyStart, mutPos);
-                std::uninitialized_copy(first + (m_size-copyStart), last, end());
+                // copy new elements
+                if (copyEnd > m_size) {
+                    std::copy_n(first, m_size-copyStart, mutPos);
+                    std::uninitialized_copy(first + (m_size-copyStart), last, end());
+                }
+                else {
+                    std::copy(first, last, mutPos);
+                }
             }
             else {
-                std::copy(first, last, mutPos);
+                // copy new elements
+                std::uninitialized_copy(first, last, mutPos);
             }
+            
+            m_size += copyCount;
+            m_tail = (m_head + m_size) % capacity();
+            
+            return mutPos;
         }
         else {
-            // copy new elements
-            std::uninitialized_copy(first, last, mutPos);
+            return end();
         }
-        
-        m_size += copyCount;
-        m_tail = (m_head + m_size) % capacity();
-        
-        return mutPos;
     }
 
-    Iterator insert(ConstIterator pos, std::move_iterator<ConstIterator> first, std::move_iterator<ConstIterator> last) override
+    Iterator insert(ConstIterator pos, std::move_iterator<Iterator> first, std::move_iterator<Iterator> last) override
     {
-        const auto copyStart = std::distance(ConstIterator(begin()), pos);
-        const auto copyCount = std::distance(first, last);
-        const auto copyEnd = copyStart + copyCount;
+        if constexpr (std::is_move_constructible_v<ValueType>) {
+            const auto copyStart = std::distance(ConstIterator(begin()), pos);
+            const auto copyCount = std::distance(first, last);
+            const auto copyEnd = copyStart + copyCount;
 
-        auto mutPos = Iterator(begin()+copyStart);
-        if (copyCount == 0) return mutPos;
-        if (m_size + copyCount > capacity()) throw std::length_error("Insert would exceed static queue capacity");
+            auto mutPos = Iterator(begin()+copyStart);
+            if (copyCount == 0) return mutPos;
+            if (m_size + copyCount > capacity()) throw std::length_error("Insert would exceed static queue capacity");
 
-        if (pos != ConstIterator(end())) {
-            // shift existing elements 
-            std::uninitialized_move_n(end()-copyCount, copyCount, end());
-            std::ranges::move(mutPos, end()-copyCount, begin()+copyEnd);
+            if (pos != ConstIterator(end())) {
+                // shift existing elements 
+                std::uninitialized_move_n(end()-copyCount, copyCount, end());
+                std::ranges::move(mutPos, end()-copyCount, begin()+copyEnd);
 
-            // move new elements
-            if (copyEnd > m_size) {
-                std::ranges::move(first, first + (m_size-copyStart), mutPos);
-                std::uninitialized_move(first + (m_size-copyStart), last, end());
+                // move new elements
+                if (copyEnd > m_size) {
+                    std::ranges::move(first, first + (m_size-copyStart), mutPos);
+                    std::uninitialized_move(first + (m_size-copyStart), last, end());
+                }
+                else {
+                    std::ranges::move(first, last, mutPos);
+                }
             }
             else {
-                std::ranges::move(first, last, mutPos);
+                // move new elements
+                std::uninitialized_move(first, last, mutPos);
             }
+            
+            m_size += copyCount;
+            m_tail = (m_head + m_size) % capacity();
+            
+            return mutPos;
         }
         else {
-            // move new elements
-            std::uninitialized_move(first, last, pos);
+            return end();
         }
-        
-        m_size += copyCount;
-        m_tail = (m_head + m_size) % capacity();
-        
-        return mutPos;
     }
 
     Iterator erase(size_t index) override
@@ -1620,19 +1640,34 @@ public:
         : Base(size, 0, size % N)
     {
         if (size > N) throw std::length_error("Initial size exceeds static capacity");
-        m_store.uninitializedFill(0, size, value);
+        if constexpr (std::is_copy_constructible_v<ValueType>) {
+            m_store.uninitializedFill(0, size, value);
+        }
+        else {
+            throw std::logic_error("copying not allowed");
+        }
     }
 
     StaticQueue(const StaticQueue& other) 
         : Base(other.m_size, 0, other.m_size % N)
     {
-        std::uninitialized_copy(other.begin(), other.end(), Base::begin());
+        if constexpr (std::is_copy_constructible_v<ValueType>) {
+            std::uninitialized_copy(other.begin(), other.end(), Base::begin());
+        }
+        else {
+            throw std::logic_error("copying not allowed");
+        }
     }
 
     StaticQueue(StaticQueue&& other) noexcept 
         : Base(other.m_size, 0, other.m_size % N)
     {
-        std::uninitialized_move(other.begin(), other.end(), Base::begin());
+        if constexpr (std::is_move_constructible_v<ValueType>) {
+            std::uninitialized_move(other.begin(), other.end(), Base::begin());
+        }
+        else {
+            throw std::logic_error("moving not allowed");
+        }
         other.clear();
     }
 
@@ -1640,7 +1675,15 @@ public:
         : Base(data.size(), 0, data.size() % N)
     {
         if (data.size() > N) throw std::length_error("Initial size exceeds static capacity");
-        std::uninitialized_move(data.begin(), data.end(), Base::begin());
+        if constexpr (std::is_move_constructible_v<ValueType>) {
+            std::uninitialized_move(data.begin(), data.end(), Base::begin());
+        }
+        else if constexpr (std::is_copy_constructible_v<ValueType>) {
+            std::uninitialized_copy(data.begin(), data.end(), Base::begin());
+        }
+        else {
+            throw std::logic_error("moving and copying not allowed");
+        }
     }
 
     ~StaticQueue() 
@@ -1650,29 +1693,39 @@ public:
 
     StaticQueue& operator=(const StaticQueue& other)
     {
-        if (this != &other) {
-            Base::clear();
+        if constexpr (std::is_copy_assignable_v<ValueType>) {
+            if (this != &other) {
+                Base::clear();
 
-            Base::m_size = other.m_size;
-            Base::m_tail = other.m_size % N;
+                Base::m_size = other.m_size;
+                Base::m_tail = other.m_size % N;
 
-            std::uninitialized_copy(other.begin(), other.end(), Base::begin());
+                std::uninitialized_copy(other.begin(), other.end(), Base::begin());
+            }
+            return *this;
         }
-        return *this;
+        else {
+            throw std::logic_error("copying not allowed");
+        }
     }
 
     StaticQueue& operator=(StaticQueue&& other) noexcept
     {
-        if (this != &other) {
-            Base::clear();
+        if constexpr (std::is_move_assignable_v<ValueType>) {
+            if (this != &other) {
+                Base::clear();
 
-            Base::m_size = other.m_size;
-            Base::m_tail = other.m_size % N;
+                Base::m_size = other.m_size;
+                Base::m_tail = other.m_size % N;
 
-            std::uninitialized_move(other.begin(), other.end(), Base::begin());
-            other.clear();
+                std::uninitialized_move(other.begin(), other.end(), Base::begin());
+                other.clear();
+            }
+            return *this;
         }
-        return *this;
+        else {
+            throw std::logic_error("moving not allowed");
+        }
     }
 
 private:

@@ -217,13 +217,13 @@
                     continue;
 
                 for (SboAny& msg : localQueue) {
-                    const auto& [level, timestamp, location, message] = &sbo_any_cast<LogData*>(msg);
-                    if (level == LogLevel::Abort)
-                        m_running = false;
-                    else
-                        printMessage(level, timestamp, location, message);
+                    // const auto& [level, timestamp, location, message] = sbo_any_cast<LogData>(&msg);
+                    // if (level == LogLevel::Abort)
+                    //     m_running = false;
+                    // else
+                    //     printMessage(level, timestamp, location, message);
 
-                    destroyMessage(msg);
+                    // destroyMessage(msg);
                 }
                 localQueue.clear();
             }

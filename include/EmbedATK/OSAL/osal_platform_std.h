@@ -64,7 +64,9 @@ private:
     
     mutable std::mutex m_mutex;
     std::condition_variable m_condition;
-    StaticQueueView<SboAny> m_queue{OSAL::MessageQueue::m_store};
+    StaticQueueView<SboAny> m_queue{*OSAL::MessageQueue::m_store};
 
     friend class StdOSAL;
 };
+
+static_assert(std::is_default_constructible_v<StdMessageQueue>);
