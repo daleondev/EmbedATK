@@ -170,7 +170,6 @@
             auto* ptr = static_cast<LogData*>(m_msgPool.allocate(alloc.size, alloc.align));
             std::construct_at<LogData>(ptr, std::forward<Args>(args)...);
             return ptr;
-            return nullptr;
         }
 
         void destroyMessage(LogData* ptr)
@@ -218,7 +217,7 @@
                     continue;
 
                 for (auto& anyMsg : localQueue) {
-                    LogData* msg = sbo_any_cast<LogData>(&anyMsg);
+                    LogData* msg = sbo_any_cast<LogData*>(anyMsg);
                     const auto& [level, timestamp, location, message] = *msg;
 
                     if (level == LogLevel::Abort)
@@ -234,8 +233,8 @@
 
         std::atomic_bool m_running;
         OSAL::StaticImpl::Thread m_thread;
-        OSAL::StaticImpl::MessageQueue m_queue;
         StaticObjectStore<SboAny, MSG_QUEUE_SIZE> m_msgStore;
+        OSAL::StaticImpl::MessageQueue m_queue;
         StaticBlockPool<MSG_QUEUE_SIZE, allocData<LogData>()> m_msgPool;
     };
 

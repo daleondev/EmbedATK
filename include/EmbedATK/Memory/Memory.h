@@ -421,6 +421,7 @@ constexpr StaticUniquePtr<T> make_static_unique(std::pmr::memory_resource* resou
 class IPool : public std::pmr::memory_resource
 {
 public:
+    virtual ~IPool() = default;
     virtual void* data() = 0;
     virtual const void* data() const = 0;
 };
@@ -819,11 +820,11 @@ T* sbo_any_cast(SboAny* any) noexcept
 template <typename T>
 const T& sbo_any_cast(const SboAny& any)
 {
-    return std::any_cast<T>(any.any());
+    return std::any_cast<const T&>(any.any());
 }
 
 template <typename T>
 T& sbo_any_cast(SboAny& any)
 {
-    return std::any_cast<T>(any.any());
+    return std::any_cast<T&>(any.any());
 }
