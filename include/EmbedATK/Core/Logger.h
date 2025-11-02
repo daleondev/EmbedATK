@@ -228,9 +228,6 @@
 
         std::atomic_bool m_running;
         OSAL::StaticImpl::Thread m_thread;
-        // StaticBlockPool<MSG_QUEUE_SIZE, allocData<SboAny>()> m_queuePool;
-        // StaticObjectStore<SboAny*, MSG_QUEUE_SIZE> m_queueStore;
-        // OSAL::StaticImpl::MessageQueue m_queue;
         OSAL::StaticMessageQueueDef<OSAL::StaticImpl::MessageQueue, SboAny, MSG_QUEUE_SIZE> m_queue;
         StaticBlockPool<MSG_QUEUE_SIZE, allocData<LogData>()> m_msgPool;
     };

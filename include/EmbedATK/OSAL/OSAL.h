@@ -150,13 +150,13 @@ public:
     struct StaticMessageQueueDef : public IMessageQueueDef<T>
     {
     public:
-        IPolymorphic<MessageQueue>& queue() { return m_queue; }
+        IPolymorphic<MessageQueue>& queue() override { return m_queue; }
         IObjectStore<T*>& store() override { return m_store; }
         IPool& pool() override { return m_pool; }
     private:
-        Impl m_queue;
-        StaticObjectStore<T*, N> m_store;
         StaticBlockPool<N, allocData<T>()> m_pool;
+        StaticObjectStore<T*, N> m_store;
+        Impl m_queue;
     };
     template<typename T>
     static void createMessageQueue(IMessageQueueDef<T>& def)
