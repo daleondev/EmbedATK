@@ -71,10 +71,3 @@ private:
 
     friend class StdOSAL;
 };
-template <typename T, size_t N>
-struct OSAL::MessageQueueImpl
-{
-    using Type = StdMessageQueue<T, N>;
-};
-template <typename T, size_t N>
-constexpr AllocData OSAL::messageQueueAllocData() { return allocData<StdMessageQueue<T, N>>(); }

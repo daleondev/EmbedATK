@@ -34,11 +34,18 @@ private:
     friend class LinuxOSAL;
 };
 
+template <typename T, size_t N>
+struct OSAL::MessageQueueImpl
+{
+    using Type = StdMessageQueue<T, N>;
+};
+
 struct OSAL::StaticImpl
 {
     using Timer         = StaticPolymorphic<OSAL::Timer, StdTimer>;
     using Mutex         = StaticPolymorphic<OSAL::Mutex, StdMutex>;
     using Thread        = StaticPolymorphic<OSAL::Thread, LinuxThread>;
     using CyclicThread  = StaticPolymorphic<OSAL::CyclicThread, LinuxCyclicThread>;
-    // using MessageQueue  = StaticPolymorphic<OSAL::MessageQueue, StdMessageQueue>;
+    template <typename T, size_t N>
+    using MessageQueue  = StaticPolymorphic<OSAL::MessageQueue<T, N>, StdMessageQueue<T, N>>;
 };

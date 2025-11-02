@@ -139,8 +139,6 @@ public:
     struct MessageQueueImpl;
     template <typename T, size_t N>
     static void createMessageQueue(IPolymorphic<MessageQueue<T, N>>& queue);
-    template <typename T, size_t N>
-    static constexpr AllocData messageQueueAllocData();
 
     struct StaticImpl;
     struct DynamicImpl
@@ -149,7 +147,8 @@ public:
         using Mutex         = DynamicPolymorphic<OSAL::Mutex>;
         using Thread        = DynamicPolymorphic<OSAL::Thread>;
         using CyclicThread  = DynamicPolymorphic<OSAL::CyclicThread>;
-        // using MessageQueue  = StaticPolymorphic<OSAL::MessageQueue, StdMessageQueue>;
+        template <typename T, size_t N>
+        using MessageQueue  = DynamicPolymorphic<OSAL::MessageQueue<T, N>>;
     };
 
 protected:
