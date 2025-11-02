@@ -132,9 +132,36 @@ public:
         virtual std::optional<SboAny> tryPop() = 0;
         virtual bool tryPopAvail(IQueue<SboAny>& data) = 0;
     };
+
     static void createMessageQueue(IPolymorphic<MessageQueue>& queue, IObjectStore<SboAny*>& store, IPool& pool)
     {
         instance().createMessageQueueImpl(queue, store, pool);
+    }
+
+    template<typename T>
+    struct IMessageQueueDef
+    {
+        virtual IPolymorphic<MessageQueue>& queue() = 0;
+        virtual IObjectStore<T*>& store() = 0;
+        virtual IPool& pool() = 0;
+    };
+    template<typename Impl, typename T, size_t N>
+    requires std::is_base_of_v<IPolymorphic<MessageQueue>, Impl>
+    struct StaticMessageQueueDef : public IMessageQueueDef<T>
+    {
+    public:
+        IPolymorphic<MessageQueue>& queue() { return m_queue; }
+        IObjectStore<T*>& store() override { return m_store; }
+        IPool& pool() override { return m_pool; }
+    private:
+        Impl m_queue;
+        StaticObjectStore<T*, N> m_store;
+        StaticBlockPool<N, allocData<T>()> m_pool;
+    };
+    template<typename T>
+    static void createMessageQueue(IMessageQueueDef<T>& def)
+    {
+        instance().createMessageQueueImpl(def.queue(), def.store(), def.pool());
     }
 
     struct StaticImpl;
