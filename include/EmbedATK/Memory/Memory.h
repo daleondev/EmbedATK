@@ -20,6 +20,11 @@ static consteval AllocData allocData()
     }; 
 }
 
+constexpr bool operator==(const AllocData& a, const AllocData& b)
+{
+    return a.size == b.size && a.align == b.align;
+}
+
 template <typename T>
 struct MaxAllocData;
 
@@ -457,6 +462,23 @@ public:
     void* data() override { return m_buff.data(); }
     const void* data() const override{ return m_buff.data(); }
 
+    template<typename T, typename ...Args>
+    T* construct(Args&&... args) 
+    {
+        static_assert(allocData<T>() == Block);
+        auto* ptr = static_cast<T*>(std::pmr::memory_resource::allocate(Block.size, Block.align));
+        std::construct_at<T>(ptr, std::forward<Args>(args)...);
+        return ptr;
+    }
+
+    template<typename T>
+    void destroy(T* ptr)
+    {
+        static_assert(allocData<T>() == Block);
+        std::destroy_at(ptr);
+        std::pmr::memory_resource::deallocate(ptr, Block.size, Block.align);
+    }
+
 private:
     void* do_allocate(size_t bytes, size_t alignment) override 
     {
@@ -802,20 +824,6 @@ public:
 private:
     std::any m_any;
 };
-
-template <typename T>
-const T* sbo_any_cast(const SboAny* any) noexcept
-{
-    if (!any) return nullptr;
-    return std::any_cast<T>(&(any->any()));
-}
-
-template <typename T>
-T* sbo_any_cast(SboAny* any) noexcept
-{
-    if (!any) return nullptr;
-    return std::any_cast<T>(&(any->any()));
-}
 
 template <typename T>
 const T& sbo_any_cast(const SboAny& any)

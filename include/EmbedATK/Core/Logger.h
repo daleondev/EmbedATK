@@ -166,17 +166,12 @@
         template<typename ...Args>
         LogData* createMessage(Args&&... args)
         {
-            static constexpr auto alloc = allocData<LogData>();
-            auto* ptr = static_cast<LogData*>(m_msgPool.allocate(alloc.size, alloc.align));
-            std::construct_at<LogData>(ptr, std::forward<Args>(args)...);
-            return ptr;
+            return m_msgPool.template construct<LogData>(std::forward<Args>(args)...);
         }
 
         void destroyMessage(LogData* ptr)
         {
-            static constexpr auto alloc = allocData<LogData>();
-            std::destroy_at(ptr);
-            m_msgPool.deallocate(ptr, alloc.size, alloc.align);
+            m_msgPool.destroy(ptr);
         }
 
         void addMessage(const LogLevel level, const Timestamp& timestamp, std::string&& location, std::string&& message) override
