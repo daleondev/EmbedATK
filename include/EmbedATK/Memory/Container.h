@@ -1229,16 +1229,16 @@ private:
 static_assert(std::ranges::random_access_range<StaticStdQueue<int, 5>>);
 static_assert(std::ranges::random_access_range<const StaticStdQueue<int, 5>>);
 
-template<typename T, size_t N, bool ClearOnDestroy = true>
+template<typename T>
 requires std::default_initializable<T>
-class StaticQueue : public IQueue<T>
+class StaticQueueBase : public IQueue<T>
 {   
     static_assert(std::is_same<typename std::remove_cv<T>::type, T>::value,
-	  "StaticQueue must have a non-const, non-volatile value_type");
+	  "StaticQueueBase must have a non-const, non-volatile value_type");
 
-    template<typename T_friend, size_t N_friend, bool ClearOnDestroy_Friend>
+    template<typename T_friend>
     requires std::default_initializable<T_friend>
-    friend class StaticQueue;
+    friend class StaticQueueBase;
 
     template<bool IsConst>
     struct QueueIterator 
@@ -1251,7 +1251,7 @@ class StaticQueue : public IQueue<T>
         using value_type        = std::remove_const_t<T>;
         using pointer           = std::conditional_t<IsConst, const value_type*, value_type*>;
         using reference         = std::conditional_t<IsConst, const value_type&, value_type&>;
-        using owner_type        = std::conditional_t<IsConst, const StaticQueue, StaticQueue>;
+        using owner_type        = std::conditional_t<IsConst, const StaticQueueBase, StaticQueueBase>;
 
         // ----------------------------------------
         // --- constructors/destructors
@@ -1308,52 +1308,15 @@ public:
     using InternalIterator      = QueueIterator<false>;
     using InternalConstIterator = QueueIterator<true>;
     using OptionalRef           = Handle::OptionalRef;
+    using StoreType             = IObjectStore<ValueType>;
     
     // ----------------------------------------
     // --- constructors/destructors
     // ----------------------------------------
-    StaticQueue() noexcept 
-        : m_store{}, m_size{ 0 } , m_head{ 0 }, m_tail{ 0 }
+    StaticQueueBase(size_t size, size_t head, size_t tail)
+        : m_size(size), m_head(head), m_tail(tail)
     {}
-
-    StaticQueue(const size_t size) 
-        : m_store{}, m_size{ size } , m_head{ 0 }, m_tail{ m_size % N }
-    { 
-        if (size > N) throw std::length_error("Initial size exceeds static capacity"); 
-        m_store.construct(0, m_size);
-    }
-
-    StaticQueue(const size_t size, const ValueType& value) 
-        : m_store{}, m_size{ size }, m_head{ 0 }, m_tail{ m_size % N }
-    {
-        if (size > N) throw std::length_error("Initial size exceeds static capacity");
-        m_store.uninitializedFill(0, m_size, value);
-    }
-
-    StaticQueue(const StaticQueue& other) 
-        : m_store{}, m_size{ other.m_size }, m_head{ 0 }, m_tail{ m_size % N }
-    {
-        std::uninitialized_copy(other.begin(), other.end(), begin());
-    }
-
-    StaticQueue(StaticQueue&& other) noexcept 
-        : m_store{}, m_size{ other.m_size }, m_head{ 0 }, m_tail{ m_size % N }
-    {
-        std::uninitialized_move(other.begin(), other.end(), begin());
-        other.clear();
-    }
-
-    StaticQueue(const std::initializer_list<ValueType>& data) 
-        : m_store{}, m_size{ data.size() }, m_head{ 0 }, m_tail{ m_size % N}
-    {
-        if (data.size() > N) throw std::length_error("Initial size exceeds static capacity");
-        std::uninitialized_move(data.begin(), data.end(), begin());
-    }
-
-    ~StaticQueue()
-    {
-        clear();
-    }
+    virtual ~StaticQueueBase() = default;
 
     // ----------------------------------------
     // --- iterators
@@ -1367,15 +1330,15 @@ public:
     // --- information
     // ----------------------------------------
     constexpr bool empty() const noexcept override { return m_size == 0; }
-    constexpr bool full() const noexcept override { return m_size >= N; }
+    constexpr bool full() const noexcept override { return m_size >= getStore().size(); }
     constexpr size_t size() const noexcept override { return m_size; }
-    constexpr size_t capacity() const noexcept override { return N; }
+    constexpr size_t capacity() const noexcept override { return getStore().size(); }
 
     // ----------------------------------------
     // --- data access
     // ----------------------------------------
-    ValueType& operator[](size_t index) override { return data()[(m_head + index) % N]; }
-    const ValueType& operator[](size_t index) const override { return data()[(m_head + index) % N]; }
+    ValueType& operator[](size_t index) override { return data()[(m_head + index) % capacity()]; }
+    const ValueType& operator[](size_t index) const override { return data()[(m_head + index) % capacity()]; }
 
     ValueType& at(size_t index) override
     { 
@@ -1398,40 +1361,13 @@ public:
     // ----------------------------------------
     // --- manipulation
     // ----------------------------------------
-    StaticQueue& operator=(const StaticQueue& other)
-    {
-        if (this != &other) {
-            clear();
-
-            m_size = other.m_size;
-            m_tail = other.m_size % N;
-
-            std::uninitialized_copy(other.begin(), other.end(), begin());
-        }
-        return *this;
-    }
-
-    StaticQueue& operator=(StaticQueue&& other) noexcept
-    {
-        if (this != &other) {
-            clear();
-
-            m_size = other.m_size;
-            m_tail = other.m_size % N;
-
-            std::uninitialized_move(other.begin(), other.end(), begin());
-            other.clear();
-        }
-        return *this;
-    }
-
     void clear() noexcept override
     {
         if (m_head > m_tail) {
-            m_store.destroy(m_tail, N-m_tail);
-            m_store.destroy(0, m_head);
+            getStore().destroy(m_tail, capacity()-m_tail);
+            getStore().destroy(0, m_head);
         } else {
-            m_store.destroy(m_head, m_tail-m_head);
+            getStore().destroy(m_head, m_tail-m_head);
         }
         m_size = 0;
         m_head = 0;
@@ -1440,24 +1376,24 @@ public:
 
     void resize(size_t size) override
     {
-        if (size > N) throw std::length_error("Initial size exceeds static capacity"); 
+        if (size > capacity()) throw std::length_error("Initial size exceeds static capacity"); 
         if (size == m_size) return;
 
-        auto tail = (m_head + size) % N;
+        auto tail = (m_head + size) % capacity();
         if (size > m_size) {
             if (m_tail > tail) {
-                m_store.construct(m_tail, N-m_tail);
-                m_store.construct(0, tail);
+                getStore().construct(m_tail, capacity()-m_tail);
+                getStore().construct(0, tail);
             } else {
-                m_store.construct(m_tail, tail-m_tail);
+                getStore().construct(m_tail, tail-m_tail);
             }
         }
         else {
             if (tail > m_tail) {
-                m_store.destroy(tail, N-tail);
-                m_store.destroy(0, m_tail);
+                getStore().destroy(tail, capacity()-tail);
+                getStore().destroy(0, m_tail);
             } else {
-                m_store.destroy(tail, m_tail-tail);
+                getStore().destroy(tail, m_tail-tail);
             }
         }
         m_size = size;
@@ -1466,24 +1402,24 @@ public:
 
     void resize(size_t size, const ValueType& value) override
     {
-        if (size > N) throw std::length_error("Initial size exceeds static capacity"); 
+        if (size > capacity()) throw std::length_error("Initial size exceeds static capacity"); 
         if (size == m_size) return;
 
-        auto tail = (m_head + size) % N;
+        auto tail = (m_head + size) % capacity();
         if (size > m_size) {
             if (m_tail > tail) {
-                m_store.uninitializedFill(m_tail, N-m_tail, value);
-                m_store.uninitializedFill(0, tail, value);
+                getStore().uninitializedFill(m_tail, capacity()-m_tail, value);
+                getStore().uninitializedFill(0, tail, value);
             } else {
-                m_store.uninitializedFill(m_tail, tail-m_tail, value);
+                getStore().uninitializedFill(m_tail, tail-m_tail, value);
             }
         }
         else {
             if (tail > m_tail) {
-                m_store.destroy(tail, N-tail);
-                m_store.destroy(0, m_tail);
+                getStore().destroy(tail, capacity()-tail);
+                getStore().destroy(0, m_tail);
             } else {
-                m_store.destroy(tail, m_tail-tail);
+                getStore().destroy(tail, m_tail-tail);
             }
         }
         m_size = size;
@@ -1494,7 +1430,7 @@ public:
     {
         if (full()) return false;
         std::construct_at(&data()[m_tail], value);
-        m_tail = (m_tail + 1) % N;
+        m_tail = (m_tail + 1) % capacity();
         m_size++;
         return true;
     }
@@ -1503,7 +1439,7 @@ public:
     {
         if (full()) return false;
         std::construct_at(&data()[m_tail], std::move(value));
-        m_tail = (m_tail + 1) % N;
+        m_tail = (m_tail + 1) % capacity();
         m_size++;
         return true;
     }
@@ -1512,8 +1448,8 @@ public:
     {
         if (empty()) return std::nullopt;
         ValueType value = std::move(data()[m_head]);
-        m_store.destroy(m_head, 1);
-        m_head = (m_head + 1) % N;
+        getStore().destroy(m_head, 1);
+        m_head = (m_head + 1) % capacity();
         m_size--;
         return std::move(value);
     }
@@ -1526,7 +1462,7 @@ public:
 
         auto mutPos = Iterator(begin()+copyStart);
         if (copyCount == 0) return mutPos;
-        if (m_size + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
+        if (m_size + copyCount > capacity()) throw std::length_error("Insert would exceed static queue capacity");
 
         if (pos != ConstIterator(end())) {
             // shift existing elements 
@@ -1548,7 +1484,7 @@ public:
         }
         
         m_size += copyCount;
-        m_tail = (m_head + m_size) % N;
+        m_tail = (m_head + m_size) % capacity();
         
         return mutPos;
     }
@@ -1561,7 +1497,7 @@ public:
 
         auto mutPos = Iterator(begin()+copyStart);
         if (copyCount == 0) return mutPos;
-        if (m_size + copyCount > N) throw std::length_error("Insert would exceed static queue capacity");
+        if (m_size + copyCount > capacity()) throw std::length_error("Insert would exceed static queue capacity");
 
         if (pos != ConstIterator(end())) {
             // shift existing elements 
@@ -1583,7 +1519,7 @@ public:
         }
         
         m_size += copyCount;
-        m_tail = (m_head + m_size) % N;
+        m_tail = (m_head + m_size) % capacity();
         
         return mutPos;
     }
@@ -1595,7 +1531,7 @@ public:
         std::ranges::move(*this | std::views::drop(index+1), begin()+index);
         
         m_size--;
-        m_tail = (m_head + m_size) % N;
+        m_tail = (m_head + m_size) % capacity();
 
         auto it = begin();
         std::advance(it, index);
@@ -1609,7 +1545,7 @@ public:
         std::ranges::move(*this | std::views::drop(index+count), begin()+index);
 
         m_size -= count;
-        m_tail = (m_head + m_size) % N;
+        m_tail = (m_head + m_size) % capacity();
 
         auto it = begin();
         std::advance(it, index);
@@ -1634,26 +1570,154 @@ public:
     {
         if (full()) return std::nullopt;
         auto constructed = std::construct_at(&data()[m_tail], std::forward<Args>(args)...);
-        m_tail = (m_tail + 1) % N;
+        m_tail = (m_tail + 1) % capacity();
         m_size++;
         return std::ref(*constructed);
     }
 
-private:
-    constexpr ValueType* data() noexcept { return reinterpret_cast<ValueType*>(m_store.data()); }
-    constexpr const ValueType* data() const noexcept { return reinterpret_cast<const ValueType*>(m_store.data()); }
+protected:
+    StaticQueueBase() noexcept 
+        : m_size{ 0 } , m_head{ 0 }, m_tail{ 0 }
+    {}
 
+private:
+    constexpr ValueType* data() noexcept { return reinterpret_cast<ValueType*>(getStore().data()); }
+    constexpr const ValueType* data() const noexcept { return reinterpret_cast<const ValueType*>(getStore().data()); }
+
+    virtual StoreType& getStore() = 0;
+    virtual const StoreType& getStore() const = 0;
+
+protected:
     // ----------------------------------------
     // --- data
     // ----------------------------------------
-    StaticObjectStore<ValueType, N, ClearOnDestroy> m_store;
     size_t m_size;
     size_t m_head;
     size_t m_tail;
 };
 
+template<typename T, size_t N, bool ClearOnDestroy = true>
+requires std::default_initializable<T>
+class StaticQueue : public StaticQueueBase<T>
+{
+    using Base      = StaticQueueBase<T>;
+    using ValueType = Base::ValueType;
+    using StoreType = Base::StoreType;
+
+public:
+    StaticQueue() noexcept 
+        : Base(0, 0, 0)
+    {}
+
+    StaticQueue(const size_t size) 
+        : Base(size, 0, size % N)
+    { 
+        if (size > N) throw std::length_error("Initial size exceeds static capacity"); 
+        m_store.construct(0, size);
+    }
+
+    StaticQueue(const size_t size, const ValueType& value) 
+        : Base(size, 0, size % N)
+    {
+        if (size > N) throw std::length_error("Initial size exceeds static capacity");
+        m_store.uninitializedFill(0, size, value);
+    }
+
+    StaticQueue(const StaticQueue& other) 
+        : Base(other.m_size, 0, other.m_size % N)
+    {
+        std::uninitialized_copy(other.begin(), other.end(), Base::begin());
+    }
+
+    StaticQueue(StaticQueue&& other) noexcept 
+        : Base(other.m_size, 0, other.m_size % N)
+    {
+        std::uninitialized_move(other.begin(), other.end(), Base::begin());
+        other.clear();
+    }
+
+    StaticQueue(const std::initializer_list<ValueType>& data) 
+        : Base(data.size(), 0, data.size() % N)
+    {
+        if (data.size() > N) throw std::length_error("Initial size exceeds static capacity");
+        std::uninitialized_move(data.begin(), data.end(), Base::begin());
+    }
+
+    ~StaticQueue() 
+    {
+        Base::clear();
+    }
+
+    StaticQueue& operator=(const StaticQueue& other)
+    {
+        if (this != &other) {
+            Base::clear();
+
+            Base::m_size = other.m_size;
+            Base::m_tail = other.m_size % N;
+
+            std::uninitialized_copy(other.begin(), other.end(), Base::begin());
+        }
+        return *this;
+    }
+
+    StaticQueue& operator=(StaticQueue&& other) noexcept
+    {
+        if (this != &other) {
+            Base::clear();
+
+            Base::m_size = other.m_size;
+            Base::m_tail = other.m_size % N;
+
+            std::uninitialized_move(other.begin(), other.end(), Base::begin());
+            other.clear();
+        }
+        return *this;
+    }
+
+private:
+    StoreType& getStore() override { return m_store; }
+    const StoreType& getStore() const override { return m_store; }
+
+    StaticObjectStore<ValueType, N, ClearOnDestroy> m_store;
+};
+
 static_assert(std::ranges::random_access_range<StaticQueue<int, 5>>);
 static_assert(std::ranges::random_access_range<const StaticQueue<int, 5>>);
+
+template<typename T>
+requires std::default_initializable<T>
+class StaticQueueView : public StaticQueueBase<T>
+{
+    using Base      = StaticQueueBase<T>;
+    using ValueType = Base::ValueType;
+    using StoreType = Base::StoreType;
+
+public:
+    StaticQueueView(StoreType& store) noexcept 
+        : Base(0, 0, 0), m_store(store)
+    {}
+
+    StaticQueueView(const StaticQueueView& other) = delete;
+    StaticQueueView(StaticQueueView&& other) = delete; 
+
+    ~StaticQueueView() 
+    {
+        Base::clear();
+    }
+
+    StaticQueueView& operator=(const StaticQueueView& other) = delete;
+    StaticQueueView& operator=(StaticQueueView&& other) = delete;
+
+private:
+    StoreType& getStore() override { return m_store; }
+    const StoreType& getStore() const override { return m_store; }
+
+    StoreType& m_store;
+};
+
+static_assert(std::ranges::random_access_range<StaticQueueView<int>>);
+static_assert(std::ranges::random_access_range<const StaticQueueView<int>>);
 
 //------------------------------------------------------
 //                      Map

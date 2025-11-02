@@ -269,7 +269,8 @@ TEST_F(ContainersTest, StaticQueue_Lifecycle)
 
 TEST_F(ContainersTest, StaticQueue_CircularBehavior)
 {
-	StaticQueue<int, 3> q;
+	StaticObjectStore<int, 3> store;
+	StaticQueueView<int> q(store);
 	q.push(1);
 	q.push(2);
 	q.pop(); // head is now at index 1
