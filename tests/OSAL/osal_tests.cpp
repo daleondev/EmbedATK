@@ -163,7 +163,7 @@ TEST(OSAL, MessageQueue_PushPop)
     // Pop the value
     auto result = queue.get()->pop();
     ASSERT_TRUE(result.has_value());
-    int popped_val = sbo_any_cast<int>(*result);
+    int popped_val = result->as<int>();
     EXPECT_EQ(popped_val, test_val);
     EXPECT_TRUE(queue.get()->empty());
 }
@@ -187,7 +187,7 @@ TEST(OSAL, MessageQueue_TryPop)
     // TryPop on non-empty queue
     result = queue.get()->tryPop();
     ASSERT_TRUE(result.has_value());
-    double popped_val = sbo_any_cast<double>(*result);
+    double popped_val = result->as<double>();
     EXPECT_EQ(popped_val, test_val);
     EXPECT_TRUE(queue.get()->empty());
 }
@@ -207,7 +207,7 @@ TEST(OSAL, MessageQueue_BlockingPop)
     OSAL::StaticImpl::Thread popThread;
     OSAL::createThread(popThread, {}, [&]() {
         auto result = queue.get()->pop(); // This should block
-        popped_val = sbo_any_cast<int>(*result);
+        popped_val = result->as<int>();
         popped = true;
     });
 
@@ -256,7 +256,7 @@ TEST(OSAL, MessageQueue_PushManyPopAvail)
 
     // Verify popped messages
     for(size_t i = 0; i < NUM_MSGS; ++i) {
-        auto val = sbo_any_cast<int>(popQueue[i]);
+        auto val = popQueue[i].as<int>();
         EXPECT_EQ(val, i);
     }
 }

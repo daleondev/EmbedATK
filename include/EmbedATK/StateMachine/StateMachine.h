@@ -4,7 +4,7 @@
 #include "StateTransition.h"
 #include "SubstateGroup.h"
 
-#include "EmbedATK/Memory/Container.h"
+#include "EmbedATK/Container/Vector.h"
 
 namespace detail {
     template<typename StatesTuple, typename EventsEnum, typename... Transitions>

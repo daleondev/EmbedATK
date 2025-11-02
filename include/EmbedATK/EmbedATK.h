@@ -10,7 +10,11 @@
 
 #include "Memory/Memory.h"
 #include "Memory/Polymorphic.h"
-#include "Memory/Container.h"
+
+#include "Container/Container.h"
+#include "Container/Vector.h"
+#include "Container/Queue.h"
+#include "Container/Map.h"
 
 #include "OSAL/OSAL.h"
 
