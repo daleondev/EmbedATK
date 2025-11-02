@@ -97,6 +97,7 @@ bool StdMessageQueue::pushMany(IQueue<SboAny>&& data)
                 std::make_move_iterator(data.begin()),
                 std::make_move_iterator(data.end())
             );
+            data.clear();
         }
 
         m_condition.notify_all();
@@ -128,12 +129,13 @@ bool StdMessageQueue::popAvail(IQueue<SboAny>& data)
             return false;
     }
 
-    if (data.capacity() >= m_queue.size()) {
-        m_queue.swap(data);
-    }
-    else {
+    if (m_queue.size() > data.capacity()) {
         data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.begin()+data.capacity()));
         m_queue.erase(0, data.capacity());
+    }
+    else {
+        data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.end()));
+        m_queue.clear();
     }
     return true;
 }
@@ -148,12 +150,13 @@ bool StdMessageQueue::tryPopAvail(IQueue<SboAny>& data)
     if (m_queue.empty())
         return false;
 
-    if (data.capacity() >= m_queue.size()) {
-        m_queue.swap(data);
-    }
-    else {
+    if (m_queue.size() > data.capacity()) {
         data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.begin()+data.capacity()));
         m_queue.erase(0, data.capacity());
+    }
+    else {
+        data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.end()));
+        m_queue.clear();
     }
     return true;
 }

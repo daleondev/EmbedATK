@@ -144,3 +144,119 @@ TEST(OSAL, CyclicThread)
     EXPECT_GE(counter, 4);
     EXPECT_LE(counter, 6);
 }
+
+TEST(OSAL, MessageQueue_PushPop)
+{
+    constexpr size_t QUEUE_SIZE = 16;
+    StaticObjectStore<SboAny, QUEUE_SIZE> store;
+    OSAL::StaticImpl::MessageQueue queue;
+    OSAL::createMessageQueue(queue, store);
+    ASSERT_TRUE(queue);
+
+    EXPECT_TRUE(queue.get()->empty());
+
+    // Push a value
+    int test_val = 42;
+    EXPECT_TRUE(queue.get()->push(SboAny(std::in_place_type<int>, test_val)));
+    EXPECT_FALSE(queue.get()->empty());
+
+    // Pop the value
+    auto result = queue.get()->pop();
+    ASSERT_TRUE(result.has_value());
+    int popped_val = sbo_any_cast<int>(*result);
+    EXPECT_EQ(popped_val, test_val);
+    EXPECT_TRUE(queue.get()->empty());
+}
+
+TEST(OSAL, MessageQueue_TryPop)
+{
+    constexpr size_t QUEUE_SIZE = 16;
+    StaticObjectStore<SboAny, QUEUE_SIZE> store;
+    OSAL::StaticImpl::MessageQueue queue;
+    OSAL::createMessageQueue(queue, store);
+    ASSERT_TRUE(queue);
+
+    // TryPop on empty queue
+    auto result = queue.get()->tryPop();
+    EXPECT_FALSE(result.has_value());
+
+    // Push a value
+    double test_val = 123.345;
+    queue.get()->push(SboAny(std::in_place_type<double>, test_val));
+
+    // TryPop on non-empty queue
+    result = queue.get()->tryPop();
+    ASSERT_TRUE(result.has_value());
+    double popped_val = sbo_any_cast<double>(*result);
+    EXPECT_EQ(popped_val, test_val);
+    EXPECT_TRUE(queue.get()->empty());
+}
+
+TEST(OSAL, MessageQueue_BlockingPop)
+{
+    constexpr size_t QUEUE_SIZE = 16;
+    StaticObjectStore<SboAny, QUEUE_SIZE> store;
+    OSAL::StaticImpl::MessageQueue queue;
+    OSAL::createMessageQueue(queue, store);
+    ASSERT_TRUE(queue);
+
+    std::atomic<bool> popped = false;
+    int test_val = 123;
+    int popped_val = 0;
+
+    OSAL::StaticImpl::Thread popThread;
+    OSAL::createThread(popThread, {}, [&]() {
+        auto result = queue.get()->pop(); // This should block
+        popped_val = sbo_any_cast<int>(*result);
+        popped = true;
+    });
+
+    popThread.get()->start();
+
+    // Give the pop thread time to start and block
+    OSAL::sleep(20000); // 20ms
+    EXPECT_FALSE(popped);
+
+    // Push a value to unblock the other thread
+    queue.get()->push(SboAny(std::in_place_type<int>, test_val));
+
+    // Wait for the pop thread to finish
+    popThread.get()->shutdown();
+
+    EXPECT_TRUE(popped);
+    EXPECT_EQ(popped_val, test_val);
+}
+
+TEST(OSAL, MessageQueue_PushManyPopAvail)
+{
+    constexpr size_t QUEUE_SIZE = 16;
+    constexpr size_t NUM_MSGS = 5;
+    StaticObjectStore<SboAny, QUEUE_SIZE> store;
+    OSAL::StaticImpl::MessageQueue queue;
+    OSAL::createMessageQueue(queue, store);
+    ASSERT_TRUE(queue);
+
+    // Prepare messages to push
+    StaticObjectStore<SboAny, NUM_MSGS> pushStore;
+    StaticQueueView<SboAny> pushQueue(pushStore);
+    for(size_t i = 0; i < NUM_MSGS; ++i) {
+        pushQueue.push(SboAny(std::in_place_type<int>, static_cast<int>(i)));
+    }
+
+    // Push many
+    EXPECT_TRUE(queue.get()->pushMany(std::move(pushQueue)));
+    EXPECT_TRUE(pushQueue.empty()); // pushMany should move the items
+
+    // Pop avail
+    StaticObjectStore<SboAny, QUEUE_SIZE> popStore;
+    StaticQueueView<SboAny> popQueue(popStore);
+    EXPECT_TRUE(queue.get()->popAvail(popQueue));
+    EXPECT_TRUE(queue.get()->empty());
+    EXPECT_EQ(popQueue.size(), NUM_MSGS);
+
+    // Verify popped messages
+    for(size_t i = 0; i < NUM_MSGS; ++i) {
+        auto val = sbo_any_cast<int>(popQueue[i]);
+        EXPECT_EQ(val, i);
+    }
+}
