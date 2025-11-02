@@ -1,5 +1,7 @@
 #pragma once
 
+#include "EmbedATK/Core/Core.h"
+
 #include "EmbedATK/Memory/Polymorphic.h"
 #include "EmbedATK/Memory/Container.h"
 
@@ -53,7 +55,6 @@ public:
         uint64_t m_stopTime;
     };
     static void createTimer(IPolymorphic<Timer>& timer) { instance().createTimerImpl(timer); }
-    static constexpr AllocData timerAllocData();
 
     // --- Mutex ---
     class Mutex
@@ -66,7 +67,6 @@ public:
         struct AllocInfo;
     };
     static void createMutex(IPolymorphic<Mutex>& mutex) { instance().createMutexImpl(mutex); }
-    static constexpr AllocData mutexAllocData();
 
     // --- Thread ---
     class Thread
@@ -92,7 +92,6 @@ public:
         auto task = std::bind(std::forward<Callable>(func), std::forward<Args>(args)...);
         thread.get()->setTask(std::move(task));
     }
-    static constexpr AllocData threadAllocData();
 
     // --- Cyclic Thread ---
     class CyclicThread
@@ -119,7 +118,6 @@ public:
         auto cyclicTask = std::bind(std::forward<Callable>(func), std::forward<Args>(args)...);
         cyclicThread.get()->setCyclicTask(std::move(cyclicTask));
     }
-    static constexpr AllocData cyclicThreadAllocData();
 
     // --- Message-Queue ---
     template <typename T, size_t N>
@@ -144,6 +142,16 @@ public:
     template <typename T, size_t N>
     static constexpr AllocData messageQueueAllocData();
 
+    struct StaticImpl;
+    struct DynamicImpl
+    {
+        using Timer         = DynamicPolymorphic<OSAL::Timer>;
+        using Mutex         = DynamicPolymorphic<OSAL::Mutex>;
+        using Thread        = DynamicPolymorphic<OSAL::Thread>;
+        using CyclicThread  = DynamicPolymorphic<OSAL::CyclicThread>;
+        // using MessageQueue  = StaticPolymorphic<OSAL::MessageQueue, StdMessageQueue>;
+    };
+
 protected:
     // --- Platform specific implementations to override ---
     virtual uint16_t hostToNetworkImpl(uint16_t) const = 0;
@@ -167,14 +175,14 @@ private:
     static const OSAL& instance();
 };
 
-#define OSAL_TIMER              StaticPolymorphicStore<OSAL::Timer, OSAL::timerAllocData()>
-#define OSAL_MUTEX              StaticPolymorphicStore<OSAL::Mutex, OSAL::mutexAllocData()>
-#define OSAL_THREAD             StaticPolymorphicStore<OSAL::Thread, OSAL::threadAllocData()>
-#define OSAL_CYCLIC_THREAD      StaticPolymorphicStore<OSAL::CyclicThread, OSAL::cyclicThreadAllocData()>
+// #define OSAL_TIMER              StaticPolymorphicStore<OSAL::Timer, OSAL::timerAllocData()>
+// #define OSAL_MUTEX              StaticPolymorphicStore<OSAL::Mutex, OSAL::mutexAllocData()>
+// #define OSAL_THREAD             StaticPolymorphicStore<OSAL::Thread, OSAL::threadAllocData()>
+// #define OSAL_CYCLIC_THREAD      StaticPolymorphicStore<OSAL::CyclicThread, OSAL::cyclicThreadAllocData()>
 #define OSAL_MESSAGE_QUEUE(T, N) StaticPolymorphicStore<OSAL::MessageQueue<T, N>, OSAL::messageQueueAllocData<T, N>()>
 
-#define OSAL_TIMER_DYN          DynamicPolymorphic<OSAL::Timer>
-#define OSAL_MUTEX_DYN          DynamicPolymorphic<OSAL::Mutex>
-#define OSAL_THREAD_DYN         DynamicPolymorphic<OSAL::Thread>
-#define OSAL_CYCLIC_THREAD_DYN  DynamicPolymorphic<OSAL::CyclicThread>
-#define OSAL_MESSAGE_QUEUE_DYN  DynamicPolymorphic<OSAL::MessageQueue>
+// #define OSAL_TIMER_DYN          DynamicPolymorphic<OSAL::Timer>
+// #define OSAL_MUTEX_DYN          DynamicPolymorphic<OSAL::Mutex>
+// #define OSAL_THREAD_DYN         DynamicPolymorphic<OSAL::Thread>
+// #define OSAL_CYCLIC_THREAD_DYN  DynamicPolymorphic<OSAL::CyclicThread>
+// #define OSAL_MESSAGE_QUEUE_DYN  DynamicPolymorphic<OSAL::MessageQueue>

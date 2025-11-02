@@ -59,7 +59,7 @@ TEST(OSAL, sleepUntil)
 
 TEST(OSAL, Timer)
 {
-    DynamicPolymorphic<OSAL::Timer> timer;
+    OSAL::StaticImpl::Timer timer;
     ASSERT_FALSE(timer);
     OSAL::createTimer(timer);
     ASSERT_TRUE(timer);
@@ -73,13 +73,13 @@ TEST(OSAL, Timer)
 
 TEST(OSAL, Mutex)
 {
-    DynamicPolymorphic<OSAL::Mutex> mutex;
+    OSAL::DynamicImpl::Mutex mutex;
     OSAL::createMutex(mutex);
     ASSERT_TRUE(mutex);
 
     int counter = 0;
     const int num_threads = 10;
-    std::vector<DynamicPolymorphic<OSAL::Thread>> threads(num_threads);
+    std::vector<OSAL::DynamicImpl::Thread> threads(num_threads);
 
     for (auto& thread : threads)
     {
@@ -108,7 +108,7 @@ TEST(OSAL, Mutex)
 TEST(OSAL, Thread)
 {
     std::atomic<bool> executed = false;
-    StaticPolymorphicStore<OSAL::Thread, OSAL::threadAllocData()> thread;
+    OSAL::StaticImpl::Thread thread;
     OSAL::createThread(thread, {}, [&]() {
         executed = true;
     });
@@ -123,7 +123,7 @@ TEST(OSAL, Thread)
 TEST(OSAL, CyclicThread)
 {
     std::atomic<int> counter = 0;
-    DynamicPolymorphic<OSAL::CyclicThread> cyclicThread;
+    OSAL::StaticImpl::CyclicThread cyclicThread;
     std::array<std::byte, 16384> stack;
     OSAL::createCyclicThread(cyclicThread, stack, [&]() {
         counter++;

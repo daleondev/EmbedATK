@@ -235,8 +235,24 @@ private:
     bool m_isValid = true;
 };
 
-template<typename Base, IsBaseOfAll<Base> DerivedTypes>
-using StaticPolymorphic = StaticPolymorphicStore<Base, MaxAllocData<DerivedTypes>::data>;
+namespace detail {
+    template<typename Base, typename Derived>
+    requires 
+        (is_tuple_v<Derived> && is_base_of_all_v<Base, Derived>) ||
+        ((!is_tuple_v<Derived>) && std::is_base_of_v<Base, Derived>)
+    struct StaticPolymorphic
+    {
+        using DerivedTuple = std::conditional_t<
+            is_tuple_v<Derived>,
+            Derived,
+            std::tuple<Derived>
+        >;
+        using type = StaticPolymorphicStore<Base, MaxAllocData<DerivedTuple>::data>;
+    };
+}
+
+template<typename Base, typename Derived>
+using StaticPolymorphic = typename detail::StaticPolymorphic<Base, Derived>::type;
 
 //------------------------------------------------------
 //                      Dynamic

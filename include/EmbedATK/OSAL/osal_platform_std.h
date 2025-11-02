@@ -16,7 +16,6 @@ private:
 
     friend class StdOSAL;
 };
-constexpr AllocData OSAL::timerAllocData() { return allocData<StdTimer>(); }
 
 class StdMutex : public OSAL::Mutex
 {
@@ -28,7 +27,6 @@ private:
 
     friend class StdOSAL;
 };
-constexpr AllocData OSAL::mutexAllocData() { return allocData<StdMutex>(); }
 
 class StdThread : public OSAL::Thread
 {

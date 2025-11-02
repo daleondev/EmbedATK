@@ -14,7 +14,6 @@ private:
     
     friend class LinuxOSAL;
 };
-constexpr AllocData OSAL::threadAllocData() { return allocData<LinuxThread>(); }
 
 class LinuxCyclicThread : public OSAL::CyclicThread
 {
@@ -34,4 +33,12 @@ private:
 
     friend class LinuxOSAL;
 };
-constexpr AllocData OSAL::cyclicThreadAllocData() { return allocData<LinuxCyclicThread>(); }
+
+struct OSAL::StaticImpl
+{
+    using Timer         = StaticPolymorphic<OSAL::Timer, StdTimer>;
+    using Mutex         = StaticPolymorphic<OSAL::Mutex, StdMutex>;
+    using Thread        = StaticPolymorphic<OSAL::Thread, LinuxThread>;
+    using CyclicThread  = StaticPolymorphic<OSAL::CyclicThread, LinuxCyclicThread>;
+    // using MessageQueue  = StaticPolymorphic<OSAL::MessageQueue, StdMessageQueue>;
+};
