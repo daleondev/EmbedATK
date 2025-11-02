@@ -170,6 +170,7 @@
             auto* ptr = static_cast<LogData*>(m_msgPool.allocate(alloc.size, alloc.align));
             std::construct_at<LogData>(ptr, std::forward<Args>(args)...);
             return ptr;
+            return nullptr;
         }
 
         void destroyMessage(LogData* ptr)
@@ -216,14 +217,16 @@
                 if (!m_queue.get()->popAvail(localQueue))
                     continue;
 
-                for (SboAny& msg : localQueue) {
-                    // const auto& [level, timestamp, location, message] = sbo_any_cast<LogData>(&msg);
-                    // if (level == LogLevel::Abort)
-                    //     m_running = false;
-                    // else
-                    //     printMessage(level, timestamp, location, message);
+                for (auto& anyMsg : localQueue) {
+                    LogData* msg = sbo_any_cast<LogData>(&anyMsg);
+                    const auto& [level, timestamp, location, message] = *msg;
 
-                    // destroyMessage(msg);
+                    if (level == LogLevel::Abort)
+                        m_running = false;
+                    else
+                        printMessage(level, timestamp, location, message);
+
+                    destroyMessage(msg);
                 }
                 localQueue.clear();
             }

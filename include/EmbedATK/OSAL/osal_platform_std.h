@@ -53,6 +53,9 @@ private:
 
 class StdMessageQueue : public OSAL::MessageQueue
 {
+public:
+    StdMessageQueue(IObjectStore<SboAny>& store) 
+        : m_store(store), m_queue(m_store) {}
 private:
     bool empty() const override;
     bool push(SboAny&& msg) override;
@@ -64,9 +67,11 @@ private:
     
     mutable std::mutex m_mutex;
     std::condition_variable m_condition;
-    StaticQueueView<SboAny> m_queue{*OSAL::MessageQueue::m_store};
+
+    IObjectStore<SboAny>& m_store;
+    StaticQueueView<SboAny> m_queue;
 
     friend class StdOSAL;
 };
 
-static_assert(std::is_default_constructible_v<StdMessageQueue>);
+// static_assert(std::is_default_constructible_v<StdMessageQueue>);

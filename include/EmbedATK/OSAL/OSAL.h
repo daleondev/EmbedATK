@@ -131,16 +131,10 @@ public:
         virtual bool popAvail(IQueue<SboAny>& data) = 0;
         virtual std::optional<SboAny> tryPop() = 0;
         virtual bool tryPopAvail(IQueue<SboAny>& data) = 0;
-    protected: 
-        IObjectStore<SboAny>* m_store;
-    private:
-        void setStore(IObjectStore<SboAny>* store) { m_store = store; }
-        friend class OSAL;
     };
     static void createMessageQueue(IPolymorphic<MessageQueue>& queue, IObjectStore<SboAny>& store)
     {
-        instance().createMessageQueueImpl(queue);
-        queue.get()->setStore(&store);
+        instance().createMessageQueueImpl(queue, store);
     }
 
     struct StaticImpl;
@@ -170,7 +164,7 @@ protected:
     virtual void createMutexImpl(IPolymorphic<Mutex>&) const = 0;
     virtual void createThreadImpl(IPolymorphic<Thread>&) const = 0;
     virtual void createCyclicThreadImpl(IPolymorphic<CyclicThread>&) const = 0;
-    virtual void createMessageQueueImpl(IPolymorphic<MessageQueue>&) const = 0;
+    virtual void createMessageQueueImpl(IPolymorphic<MessageQueue>&, IObjectStore<SboAny>&) const = 0;
 
 private:
     // --- Singleton instance ---

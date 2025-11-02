@@ -67,16 +67,16 @@ bool StdMessageQueue::empty() const
 
 bool StdMessageQueue::push(SboAny&& msg) 
 { 
-    if constexpr (std::is_move_constructible_v<SboAny> && std::is_move_assignable_v<SboAny>) {
-        // {
-        //     std::lock_guard<std::mutex> lock(m_mutex);
-        //     if (m_queue.full())
-        //         return false;
+    if constexpr (std::is_move_constructible_v<SboAny>) {
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_queue.full())
+                return false;
 
-        //     m_queue.push(std::move(msg)); 
-        // }
+            m_queue.push(std::move(msg)); 
+        }
 
-        // m_condition.notify_one();
+        m_condition.notify_one();
         return true; 
     }
     else {
@@ -87,19 +87,19 @@ bool StdMessageQueue::push(SboAny&& msg)
 bool StdMessageQueue::pushMany(IQueue<SboAny>&& data)
 {
     if constexpr (std::is_move_constructible_v<SboAny> && std::is_move_assignable_v<SboAny>) {
-        // {
-        //     std::lock_guard<std::mutex> lock(m_mutex);
-        //     if (m_queue.size() + data.size() > m_queue.capacity())
-        //         return false;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_queue.size() + data.size() > m_queue.capacity())
+                return false;
 
-        //     m_queue.insert(
-        //         m_queue.end(), 
-        //         std::make_move_iterator(data.begin()),
-        //         std::make_move_iterator(data.end())
-        //     );
-        // }
+            m_queue.insert(
+                m_queue.end(), 
+                std::make_move_iterator(data.begin()),
+                std::make_move_iterator(data.end())
+            );
+        }
 
-        // m_condition.notify_all();
+        m_condition.notify_all();
         return true;
     }
     else {
@@ -110,53 +110,51 @@ std::optional<SboAny> StdMessageQueue::pop()
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
-    // if (m_queue.empty()) {
-    //     m_condition.wait(lock, [this]() { return !m_queue.empty(); });
-    //     if (m_queue.empty())
-    //         return {};
-    // }
+    if (m_queue.empty()) {
+        m_condition.wait(lock, [this]() { return !m_queue.empty(); });
+        if (m_queue.empty())
+            return {};
+    }
 
-    // return m_queue.pop();
-    return std::nullopt;
+    return m_queue.pop();
 }
 bool StdMessageQueue::popAvail(IQueue<SboAny>& data)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
-    // if (m_queue.empty()) {
-    //     m_condition.wait(lock, [this]() { return !m_queue.empty(); });
-    //     if (m_queue.empty())
-    //         return false;
-    // }
+    if (m_queue.empty()) {
+        m_condition.wait(lock, [this]() { return !m_queue.empty(); });
+        if (m_queue.empty())
+            return false;
+    }
 
-    // if (data.capacity() >= m_queue.size()) {
-    //     m_queue.swap(data);
-    // }
-    // else {
-    //     data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.begin()+data.capacity()));
-    //     m_queue.erase(0, data.capacity());
-    // }
+    if (data.capacity() >= m_queue.size()) {
+        m_queue.swap(data);
+    }
+    else {
+        data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.begin()+data.capacity()));
+        m_queue.erase(0, data.capacity());
+    }
     return true;
 }
 std::optional<SboAny> StdMessageQueue::tryPop()
 {
-    // std::unique_lock<std::mutex> lock(m_mutex);
-    // return m_queue.pop();
-    return std::nullopt;
+    std::unique_lock<std::mutex> lock(m_mutex);
+    return m_queue.pop();
 }
 bool StdMessageQueue::tryPopAvail(IQueue<SboAny>& data)
 {
-    // std::unique_lock<std::mutex> lock(m_mutex);
-    // if (m_queue.empty())
-    //     return false;
+    std::unique_lock<std::mutex> lock(m_mutex);
+    if (m_queue.empty())
+        return false;
 
-    // if (data.capacity() >= m_queue.size()) {
-    //     m_queue.swap(data);
-    // }
-    // else {
-    //     data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.begin()+data.capacity()));
-    //     m_queue.erase(0, data.capacity());
-    // }
+    if (data.capacity() >= m_queue.size()) {
+        m_queue.swap(data);
+    }
+    else {
+        data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.begin()+data.capacity()));
+        m_queue.erase(0, data.capacity());
+    }
     return true;
 }
 
@@ -237,5 +235,8 @@ private:
     void createMutexImpl(IPolymorphic<OSAL::Mutex>& mutex) const override { mutex.construct<StdMutex>(); }
 
     // --- Message Queue ---
-    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue) const override { queue.construct<StdMessageQueue>(); }
+    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<SboAny>& store) const override 
+    { 
+        queue.construct<StdMessageQueue>(store); 
+    }
 };

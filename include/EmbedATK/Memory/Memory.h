@@ -774,18 +774,27 @@ public:
     SboAny(const SboAny&) = delete;
     SboAny& operator=(const SboAny&) = delete;
 
-    bool has_value() const noexcept {
+    bool has_value() const noexcept 
+    {
         return m_any.has_value();
     }
-    void reset() noexcept {
+    void reset() noexcept 
+    {
         m_any.reset();
     }
 
-    const std::type_info& type() const noexcept {
+    const std::type_info& type() const noexcept
+    {
         return m_any.type();
     }
 
-    const std::any& any() const {
+    std::any& any() 
+    {
+        return m_any;
+    }
+
+    const std::any& any() const 
+    {
         return m_any;
     }
 
