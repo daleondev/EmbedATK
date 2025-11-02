@@ -51,23 +51,20 @@ private:
     std::condition_variable m_condition;
 };
 
-template <typename T, size_t N>
-class StdMessageQueue : public OSAL::MessageQueue<T, N>
+class StdMessageQueue : public OSAL::MessageQueue
 {
 private:
     bool empty() const override;
-    bool push(const T& msg) override;
-    bool push(T&& msg) override;
-    bool pushMany(const IQueue<T>& data) override;
-    bool pushMany(IQueue<T>&& data) override;
-    std::optional<T> pop() override;
-    bool popAvail(IQueue<T>& data) override;
-    std::optional<T> tryPop() override;
-    bool tryPopAvail(IQueue<T>& data) override;
+    bool push(SboAny&& msg) override;
+    bool pushMany(IQueue<SboAny>&& data) override;
+    std::optional<SboAny> pop() override;
+    bool popAvail(IQueue<SboAny>& data) override;
+    std::optional<SboAny> tryPop() override;
+    bool tryPopAvail(IQueue<SboAny>& data) override;
     
     mutable std::mutex m_mutex;
     std::condition_variable m_condition;
-    StaticQueue<T, N> m_queue;
+    StaticQueueView<SboAny> m_queue{OSAL::MessageQueue::m_store};
 
     friend class StdOSAL;
 };

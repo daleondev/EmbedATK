@@ -706,3 +706,80 @@ private:
     StaticBuffer<DataSize, alignof(T)> m_blockBuff;
     FreeBlock* m_freeBlocks;
 };
+
+//------------------------------------------------------
+//                    Any
+//------------------------------------------------------
+
+class SboAny
+{
+public:
+    SboAny() noexcept = default;
+
+    template <typename T, typename... Args>
+    SboAny(std::in_place_type_t<T> tag, Args&&... args)
+    {
+        m_any.emplace<T>(std::forward<Args>(args)...);
+
+        const uintptr_t any_start = reinterpret_cast<uintptr_t>(&m_any);
+        const uintptr_t any_end = any_start + sizeof(SboAny);
+
+        const uintptr_t value_ptr = reinterpret_cast<uintptr_t>(std::any_cast<T>(&m_any));
+        const uintptr_t value_end = value_ptr + sizeof(T);
+        
+        bool is_in_buffer = (value_ptr >= any_start) && (value_end <= any_end);
+        if (!is_in_buffer) {
+            throw std::bad_alloc();
+        }
+    }
+
+    SboAny(SboAny&& other) noexcept = default;
+    SboAny& operator=(SboAny&& other) noexcept = default;
+
+    SboAny(const SboAny&) = delete;
+    SboAny& operator=(const SboAny&) = delete;
+
+    bool has_value() const noexcept {
+        return m_any.has_value();
+    }
+    void reset() noexcept {
+        m_any.reset();
+    }
+
+    const std::type_info& type() const noexcept {
+        return m_any.type();
+    }
+
+    const std::any& any() const {
+        return m_any;
+    }
+
+private:
+    std::any m_any;
+};
+
+template <typename T>
+const T* sbo_any_cast(const SboAny* any) noexcept
+{
+    if (!any) return nullptr;
+    return std::any_cast<T>(&(any->any()));
+}
+
+template <typename T>
+T* sbo_any_cast(SboAny* any) noexcept
+{
+    if (!any) return nullptr;
+    return std::any_cast<T>(&(any->any()));
+}
+
+template <typename T>
+const T& sbo_any_cast(const SboAny& any)
+{
+    return std::any_cast<T>(any.any());
+}
+
+template <typename T>
+T& sbo_any_cast(SboAny& any)
+{
+    return std::any_cast<T>(any.any());
+}

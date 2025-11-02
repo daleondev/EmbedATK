@@ -120,25 +120,28 @@ public:
     }
 
     // --- Message-Queue ---
-    template <typename T, size_t N>
     class MessageQueue
     {
     public:
         virtual ~MessageQueue() = default;
         virtual bool empty() const = 0;
-        virtual bool push(const T& msg) = 0;
-        virtual bool push(T&& msg) = 0;
-        virtual bool pushMany(const IQueue<T>& data) = 0;
-        virtual bool pushMany(IQueue<T>&& data) = 0;
-        virtual std::optional<T> pop() = 0;
-        virtual bool popAvail(IQueue<T>& data) = 0;
-        virtual std::optional<T> tryPop() = 0;
-        virtual bool tryPopAvail(IQueue<T>& data) = 0;
+        virtual bool push(SboAny&& msg) = 0;
+        virtual bool pushMany(IQueue<SboAny>&& data) = 0;
+        virtual std::optional<SboAny> pop() = 0;
+        virtual bool popAvail(IQueue<SboAny>& data) = 0;
+        virtual std::optional<SboAny> tryPop() = 0;
+        virtual bool tryPopAvail(IQueue<SboAny>& data) = 0;
+    protected: 
+        IObjectStore<SboAny>& m_store;
+    private:
+        void setStore(IObjectStore<SboAny>& store) { m_store = store; }
+        friend class OSAL;
     };
-    template <typename T, size_t N>
-    struct MessageQueueImpl;
-    template <typename T, size_t N>
-    static void createMessageQueue(IPolymorphic<MessageQueue<T, N>>& queue);
+    static void createMessageQueue(IPolymorphic<MessageQueue>& queue, IObjectStore<SboAny>& store)
+    {
+        instance().createMessageQueueImpl(queue);
+        queue.get()->setStore(store);
+    }
 
     struct StaticImpl;
     struct DynamicImpl
@@ -147,8 +150,7 @@ public:
         using Mutex         = DynamicPolymorphic<OSAL::Mutex>;
         using Thread        = DynamicPolymorphic<OSAL::Thread>;
         using CyclicThread  = DynamicPolymorphic<OSAL::CyclicThread>;
-        template <typename T, size_t N>
-        using MessageQueue  = DynamicPolymorphic<OSAL::MessageQueue<T, N>>;
+        using MessageQueue  = DynamicPolymorphic<OSAL::MessageQueue>;
     };
 
 protected:
@@ -168,20 +170,9 @@ protected:
     virtual void createMutexImpl(IPolymorphic<Mutex>&) const = 0;
     virtual void createThreadImpl(IPolymorphic<Thread>&) const = 0;
     virtual void createCyclicThreadImpl(IPolymorphic<CyclicThread>&) const = 0;
+    virtual void createMessageQueueImpl(IPolymorphic<MessageQueue>&) const = 0;
 
 private:
     // --- Singleton instance ---
     static const OSAL& instance();
 };
-
-// #define OSAL_TIMER              StaticPolymorphicStore<OSAL::Timer, OSAL::timerAllocData()>
-// #define OSAL_MUTEX              StaticPolymorphicStore<OSAL::Mutex, OSAL::mutexAllocData()>
-// #define OSAL_THREAD             StaticPolymorphicStore<OSAL::Thread, OSAL::threadAllocData()>
-// #define OSAL_CYCLIC_THREAD      StaticPolymorphicStore<OSAL::CyclicThread, OSAL::cyclicThreadAllocData()>
-#define OSAL_MESSAGE_QUEUE(T, N) StaticPolymorphicStore<OSAL::MessageQueue<T, N>, OSAL::messageQueueAllocData<T, N>()>
-
-// #define OSAL_TIMER_DYN          DynamicPolymorphic<OSAL::Timer>
-// #define OSAL_MUTEX_DYN          DynamicPolymorphic<OSAL::Mutex>
-// #define OSAL_THREAD_DYN         DynamicPolymorphic<OSAL::Thread>
-// #define OSAL_CYCLIC_THREAD_DYN  DynamicPolymorphic<OSAL::CyclicThread>
-// #define OSAL_MESSAGE_QUEUE_DYN  DynamicPolymorphic<OSAL::MessageQueue>
