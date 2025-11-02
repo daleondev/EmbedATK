@@ -145,7 +145,7 @@
     public:
         Logger()
         {
-            OSAL::createMessageQueue(m_queue, m_msgStore);
+            OSAL::createMessageQueue(m_queue, m_queueStore, m_queuePool);
 
             OSAL::createThread(m_thread, g_loggerStack, &Logger::loggingTask, this);
             m_thread.get()->setPriority(10);
@@ -194,11 +194,11 @@
                 case LogLevel::Abort:       return;
             }
 
+            const auto msg = std::format("[{}] <{}>: {}", timestamp.timeStr(), location, message);
+
             OSAL::setConsoleColor(consoleColor);
-            if (err)
-                OSAL::eprintln(std::format("[{}] <{}>: {}", timestamp.timeStr(), location, message).c_str());
-            else
-                OSAL::println(std::format("[{}] <{}>: {}", timestamp.timeStr(), location, message).c_str());
+            if (err) OSAL::eprintln(msg.c_str());
+            else OSAL::println(msg.c_str());
             OSAL::setConsoleColor(ConsoleColor::Standard);
         }
 
@@ -212,7 +212,7 @@
                     continue;
 
                 for (auto& anyMsg : localQueue) {
-                    LogData* msg = sbo_any_cast<LogData*>(anyMsg);
+                    LogData* msg = anyMsg.as<LogData*>();
                     const auto& [level, timestamp, location, message] = *msg;
 
                     if (level == LogLevel::Abort)
@@ -228,7 +228,8 @@
 
         std::atomic_bool m_running;
         OSAL::StaticImpl::Thread m_thread;
-        StaticObjectStore<SboAny, MSG_QUEUE_SIZE> m_msgStore;
+        StaticBlockPool<MSG_QUEUE_SIZE, allocData<SboAny>()> m_queuePool;
+        StaticObjectStore<SboAny*, MSG_QUEUE_SIZE> m_queueStore;
         OSAL::StaticImpl::MessageQueue m_queue;
         StaticBlockPool<MSG_QUEUE_SIZE, allocData<LogData>()> m_msgPool;
     };

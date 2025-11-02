@@ -821,18 +821,18 @@ public:
         return m_any;
     }
 
+    template <typename T>
+    const T& as() const
+    {
+        return std::any_cast<const T&>(m_any);
+    }
+
+    template <typename T>
+    T& as()
+    {
+        return std::any_cast<T&>(m_any);
+    }
+
 private:
     std::any m_any;
 };
-
-template <typename T>
-const T& sbo_any_cast(const SboAny& any)
-{
-    return std::any_cast<const T&>(any.any());
-}
-
-template <typename T>
-T& sbo_any_cast(SboAny& any)
-{
-    return std::any_cast<T&>(any.any());
-}

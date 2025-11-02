@@ -73,7 +73,10 @@ bool StdMessageQueue::push(SboAny&& msg)
             if (m_queue.full())
                 return false;
 
-            m_queue.push(std::move(msg)); 
+            static constexpr auto alloc = allocData<SboAny>();
+            auto* ptr = static_cast<SboAny*>(m_pool.allocate(alloc.size, alloc.align));
+            std::construct_at(ptr, std::move(msg));
+            m_queue.push(ptr); 
         }
 
         m_condition.notify_one();
@@ -92,15 +95,16 @@ bool StdMessageQueue::pushMany(IQueue<SboAny>&& data)
             if (m_queue.size() + data.size() > m_queue.capacity())
                 return false;
 
-            m_queue.insert(
-                m_queue.end(), 
-                std::make_move_iterator(data.begin()),
-                std::make_move_iterator(data.end())
-            );
-            data.clear();
+            static constexpr auto alloc = allocData<SboAny>();
+            for (auto& msg : data) {
+                auto* ptr = static_cast<SboAny*>(m_pool.allocate(alloc.size, alloc.align));
+                std::construct_at(ptr, std::move(msg));
+                m_queue.push(ptr); 
+            }
         }
 
         m_condition.notify_all();
+        data.clear();
         return true;
     }
     else {
@@ -117,7 +121,13 @@ std::optional<SboAny> StdMessageQueue::pop()
             return {};
     }
 
-    return m_queue.pop();
+    auto ptr = m_queue.pop();
+    if (!ptr.has_value()) return std::nullopt;
+
+    std::optional<SboAny> result = std::move(*ptr.value());
+    static constexpr auto alloc = allocData<SboAny>();
+    m_pool.deallocate(ptr.value(), alloc.size, alloc.align);
+    return result;
 }
 bool StdMessageQueue::popAvail(IQueue<SboAny>& data)
 {
@@ -129,12 +139,20 @@ bool StdMessageQueue::popAvail(IQueue<SboAny>& data)
             return false;
     }
 
+    static constexpr auto alloc = allocData<SboAny>();
     if (m_queue.size() > data.capacity()) {
-        data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.begin()+data.capacity()));
+        for (size_t i = 0; i < data.capacity(); ++i) {
+            auto* ptr = m_queue[i];
+            data.push(std::move(*ptr));
+            m_pool.deallocate(ptr, alloc.size, alloc.align);
+        }
         m_queue.erase(0, data.capacity());
     }
     else {
-        data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.end()));
+        for (auto* ptr : m_queue) {
+            data.push(std::move(*ptr));
+            m_pool.deallocate(ptr, alloc.size, alloc.align);
+        }
         m_queue.clear();
     }
     return true;
@@ -142,7 +160,14 @@ bool StdMessageQueue::popAvail(IQueue<SboAny>& data)
 std::optional<SboAny> StdMessageQueue::tryPop()
 {
     std::unique_lock<std::mutex> lock(m_mutex);
-    return m_queue.pop();
+
+    auto ptr = m_queue.pop();
+    if (!ptr.has_value()) return std::nullopt;
+
+    std::optional<SboAny> result = std::move(*ptr.value());
+    static constexpr auto alloc = allocData<SboAny>();
+    m_pool.deallocate(ptr.value(), alloc.size, alloc.align);
+    return result;
 }
 bool StdMessageQueue::tryPopAvail(IQueue<SboAny>& data)
 {
@@ -150,12 +175,20 @@ bool StdMessageQueue::tryPopAvail(IQueue<SboAny>& data)
     if (m_queue.empty())
         return false;
 
+    static constexpr auto alloc = allocData<SboAny>();
     if (m_queue.size() > data.capacity()) {
-        data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.begin()+data.capacity()));
+        for (size_t i = 0; i < data.capacity(); ++i) {
+            auto* ptr = m_queue[i];
+            data.push(std::move(*ptr));
+            m_pool.deallocate(ptr, alloc.size, alloc.align);
+        }
         m_queue.erase(0, data.capacity());
     }
     else {
-        data.insert(data.begin(), std::move_iterator(m_queue.begin()), std::move_iterator(m_queue.end()));
+        for (auto* ptr : m_queue) {
+            data.push(std::move(*ptr));
+            m_pool.deallocate(ptr, alloc.size, alloc.align);
+        }
         m_queue.clear();
     }
     return true;
@@ -238,8 +271,8 @@ private:
     void createMutexImpl(IPolymorphic<OSAL::Mutex>& mutex) const override { mutex.construct<StdMutex>(); }
 
     // --- Message Queue ---
-    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<SboAny>& store) const override 
+    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<SboAny*>& store, IPool& pool) const override 
     { 
-        queue.construct<StdMessageQueue>(store); 
+        queue.construct<StdMessageQueue>(store, pool); 
     }
 };

@@ -132,9 +132,9 @@ public:
         virtual std::optional<SboAny> tryPop() = 0;
         virtual bool tryPopAvail(IQueue<SboAny>& data) = 0;
     };
-    static void createMessageQueue(IPolymorphic<MessageQueue>& queue, IObjectStore<SboAny>& store)
+    static void createMessageQueue(IPolymorphic<MessageQueue>& queue, IObjectStore<SboAny*>& store, IPool& pool)
     {
-        instance().createMessageQueueImpl(queue, store);
+        instance().createMessageQueueImpl(queue, store, pool);
     }
 
     struct StaticImpl;
@@ -164,7 +164,7 @@ protected:
     virtual void createMutexImpl(IPolymorphic<Mutex>&) const = 0;
     virtual void createThreadImpl(IPolymorphic<Thread>&) const = 0;
     virtual void createCyclicThreadImpl(IPolymorphic<CyclicThread>&) const = 0;
-    virtual void createMessageQueueImpl(IPolymorphic<MessageQueue>&, IObjectStore<SboAny>&) const = 0;
+    virtual void createMessageQueueImpl(IPolymorphic<MessageQueue>&, IObjectStore<SboAny*>&, IPool&) const = 0;
 
 private:
     // --- Singleton instance ---

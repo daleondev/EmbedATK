@@ -54,8 +54,8 @@ private:
 class StdMessageQueue : public OSAL::MessageQueue
 {
 public:
-    StdMessageQueue(IObjectStore<SboAny>& store) 
-        : m_store(store), m_queue(m_store) {}
+    StdMessageQueue(IObjectStore<SboAny*>& store, IPool& pool) 
+        : m_pool(pool), m_store(store), m_queue(m_store) {}
 private:
     bool empty() const override;
     bool push(SboAny&& msg) override;
@@ -68,8 +68,9 @@ private:
     mutable std::mutex m_mutex;
     std::condition_variable m_condition;
 
-    IObjectStore<SboAny>& m_store;
-    StaticQueueView<SboAny> m_queue;
+    IPool& m_pool;
+    IObjectStore<SboAny*>& m_store;
+    StaticQueueView<SboAny*> m_queue;
 
     friend class StdOSAL;
 };
