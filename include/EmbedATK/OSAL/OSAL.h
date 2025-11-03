@@ -3,6 +3,7 @@
 #include "EmbedATK/Core/Core.h"
 
 #include "EmbedATK/Memory/Polymorphic.h"
+#include "EmbedATK/Memory/Any.h"
 #include "EmbedATK/Container/Queue.h"
 
 #include "EmbedATK/Utils/Timestamp.h"
@@ -123,43 +124,41 @@ public:
     class MessageQueue
     {
     public:
+        using MsgType = StaticAny<16>;
         virtual ~MessageQueue() = default;
         virtual bool empty() const = 0;
-        virtual bool push(SboAny&& msg) = 0;
-        virtual bool pushMany(IQueue<SboAny>&& data) = 0;
-        virtual std::optional<SboAny> pop() = 0;
-        virtual bool popAvail(IQueue<SboAny>& data) = 0;
-        virtual std::optional<SboAny> tryPop() = 0;
-        virtual bool tryPopAvail(IQueue<SboAny>& data) = 0;
+        virtual bool push(MsgType&& msg) = 0;
+        virtual bool pushMany(IQueue<MsgType>&& data) = 0;
+        virtual std::optional<MsgType> pop() = 0;
+        virtual bool popAvail(IQueue<MsgType>& data) = 0;
+        virtual std::optional<MsgType> tryPop() = 0;
+        virtual bool tryPopAvail(IQueue<MsgType>& data) = 0;
     };
-
-    static void createMessageQueue(IPolymorphic<MessageQueue>& queue, IObjectStore<SboAny*>& store, IPool& pool)
+    static void createMessageQueue(IPolymorphic<MessageQueue>& queue, IObjectStore<MessageQueue::MsgType*>& store, IPool& pool)
     {
         instance().createMessageQueueImpl(queue, store, pool);
     }
 
-    template<typename T>
     struct IMessageQueueDef
     {
         virtual IPolymorphic<MessageQueue>& queue() = 0;
-        virtual IObjectStore<T*>& store() = 0;
+        virtual IObjectStore<MessageQueue::MsgType*>& store() = 0;
         virtual IPool& pool() = 0;
     };
-    template<typename Impl, typename T, size_t N>
+    template<typename Impl, size_t N>
     requires std::is_base_of_v<IPolymorphic<MessageQueue>, Impl>
-    struct StaticMessageQueueDef : public IMessageQueueDef<T>
+    struct StaticMessageQueueDef : public IMessageQueueDef
     {
     public:
         IPolymorphic<MessageQueue>& queue() override { return m_queue; }
-        IObjectStore<T*>& store() override { return m_store; }
+        IObjectStore<MessageQueue::MsgType*>& store() override { return m_store; }
         IPool& pool() override { return m_pool; }
     private:
-        StaticBlockPool<N, allocData<T>()> m_pool;
-        StaticObjectStore<T*, N> m_store;
+        StaticBlockPool<N, allocData<MessageQueue::MsgType>()> m_pool;
+        StaticObjectStore<MessageQueue::MsgType*, N> m_store;
         Impl m_queue;
     };
-    template<typename T>
-    static void createMessageQueue(IMessageQueueDef<T>& def)
+    static void createMessageQueue(IMessageQueueDef& def)
     {
         instance().createMessageQueueImpl(def.queue(), def.store(), def.pool());
     }
@@ -191,7 +190,7 @@ protected:
     virtual void createMutexImpl(IPolymorphic<Mutex>&) const = 0;
     virtual void createThreadImpl(IPolymorphic<Thread>&) const = 0;
     virtual void createCyclicThreadImpl(IPolymorphic<CyclicThread>&) const = 0;
-    virtual void createMessageQueueImpl(IPolymorphic<MessageQueue>&, IObjectStore<SboAny*>&, IPool&) const = 0;
+    virtual void createMessageQueueImpl(IPolymorphic<MessageQueue>&, IObjectStore<MessageQueue::MsgType*>&, IPool&) const = 0;
 
 private:
     // --- Singleton instance ---

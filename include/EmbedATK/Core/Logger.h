@@ -145,7 +145,7 @@
     public:
         Logger()
         {
-            OSAL::createMessageQueue<SboAny>(m_queue);
+            OSAL::createMessageQueue(m_queue);
 
             OSAL::createThread(m_thread, g_loggerStack, &Logger::loggingTask, this);
             m_thread.get()->setPriority(10);
@@ -157,7 +157,7 @@
             m_running = false;
 
             LogData* abortMsg = createMessage(LogLevel::Abort, Timestamp{}, "", "");
-            m_queue.queue().get()->push(SboAny(std::in_place_type<LogData*>, abortMsg));
+            m_queue.queue().get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<LogData*>, abortMsg));
 
             m_thread.get()->shutdown();
         }
@@ -177,7 +177,7 @@
         void addMessage(const LogLevel level, const Timestamp& timestamp, std::string&& location, std::string&& message) override
         {
             LogData* msg = createMessage(level, timestamp, std::move(location), std::move(message));
-            m_queue.queue().get()->push(SboAny(std::in_place_type<LogData*>, msg));
+            m_queue.queue().get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<LogData*>, msg));
         }
 
         void printMessage(const LogLevel level, const Timestamp& timestamp, const std::string& location, const std::string& message) const override
@@ -204,7 +204,7 @@
 
         void loggingTask()
         {
-            StaticQueue<SboAny, 32> localQueue;
+            StaticQueue<OSAL::MessageQueue::MsgType, 32> localQueue;
 
             m_running = true;
             while (m_running || !m_queue.queue().get()->empty()) {
@@ -228,7 +228,7 @@
 
         std::atomic_bool m_running;
         OSAL::StaticImpl::Thread m_thread;
-        OSAL::StaticMessageQueueDef<OSAL::StaticImpl::MessageQueue, SboAny, MSG_QUEUE_SIZE> m_queue;
+        OSAL::StaticMessageQueueDef<OSAL::StaticImpl::MessageQueue, MSG_QUEUE_SIZE> m_queue;
         StaticBlockPool<MSG_QUEUE_SIZE, allocData<LogData>()> m_msgPool;
     };
 

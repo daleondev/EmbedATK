@@ -9,7 +9,11 @@
 #include "Core/Logger.h"
 
 #include "Memory/Memory.h"
+#include "Memory/Buffer.h"
+#include "Memory/Store.h"
+#include "Memory/Pool.h"
 #include "Memory/Polymorphic.h"
+#include "Memory/Any.h"
 
 #include "Container/Container.h"
 #include "Container/Vector.h"

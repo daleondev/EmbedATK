@@ -65,16 +65,16 @@ bool StdMessageQueue::empty() const
     return m_queue.empty();
 }
 
-bool StdMessageQueue::push(SboAny&& msg) 
+bool StdMessageQueue::push(MsgType&& msg) 
 { 
-    if constexpr (std::is_move_constructible_v<SboAny>) {
+    if constexpr (std::is_move_constructible_v<MsgType>) {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_queue.full())
                 return false;
 
-            static constexpr auto alloc = allocData<SboAny>();
-            auto* ptr = static_cast<SboAny*>(m_pool.allocate(alloc.size, alloc.align));
+            static constexpr auto alloc = allocData<MsgType>();
+            auto* ptr = static_cast<MsgType*>(m_pool.allocate(alloc.size, alloc.align));
             std::construct_at(ptr, std::move(msg));
             m_queue.push(ptr); 
         }
@@ -87,17 +87,17 @@ bool StdMessageQueue::push(SboAny&& msg)
     }
 }
 
-bool StdMessageQueue::pushMany(IQueue<SboAny>&& data)
+bool StdMessageQueue::pushMany(IQueue<MsgType>&& data)
 {
-    if constexpr (std::is_move_constructible_v<SboAny> && std::is_move_assignable_v<SboAny>) {
+    if constexpr (std::is_move_constructible_v<MsgType> && std::is_move_assignable_v<MsgType>) {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_queue.size() + data.size() > m_queue.capacity())
                 return false;
 
-            static constexpr auto alloc = allocData<SboAny>();
+            static constexpr auto alloc = allocData<MsgType>();
             for (auto& msg : data) {
-                auto* ptr = static_cast<SboAny*>(m_pool.allocate(alloc.size, alloc.align));
+                auto* ptr = static_cast<MsgType*>(m_pool.allocate(alloc.size, alloc.align));
                 std::construct_at(ptr, std::move(msg));
                 m_queue.push(ptr); 
             }
@@ -111,7 +111,7 @@ bool StdMessageQueue::pushMany(IQueue<SboAny>&& data)
         return false;
     }
 }
-std::optional<SboAny> StdMessageQueue::pop()
+std::optional<OSAL::MessageQueue::MsgType> StdMessageQueue::pop()
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
@@ -124,12 +124,12 @@ std::optional<SboAny> StdMessageQueue::pop()
     auto ptr = m_queue.pop();
     if (!ptr.has_value()) return std::nullopt;
 
-    std::optional<SboAny> result = std::move(*ptr.value());
-    static constexpr auto alloc = allocData<SboAny>();
+    std::optional<MsgType> result = std::move(*ptr.value());
+    static constexpr auto alloc = allocData<MsgType>();
     m_pool.deallocate(ptr.value(), alloc.size, alloc.align);
     return result;
 }
-bool StdMessageQueue::popAvail(IQueue<SboAny>& data)
+bool StdMessageQueue::popAvail(IQueue<MsgType>& data)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
@@ -139,7 +139,7 @@ bool StdMessageQueue::popAvail(IQueue<SboAny>& data)
             return false;
     }
 
-    static constexpr auto alloc = allocData<SboAny>();
+    static constexpr auto alloc = allocData<MsgType>();
     if (m_queue.size() > data.capacity()) {
         for (size_t i = 0; i < data.capacity(); ++i) {
             auto* ptr = m_queue[i];
@@ -157,25 +157,25 @@ bool StdMessageQueue::popAvail(IQueue<SboAny>& data)
     }
     return true;
 }
-std::optional<SboAny> StdMessageQueue::tryPop()
+std::optional<OSAL::MessageQueue::MsgType> StdMessageQueue::tryPop()
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
     auto ptr = m_queue.pop();
     if (!ptr.has_value()) return std::nullopt;
 
-    std::optional<SboAny> result = std::move(*ptr.value());
-    static constexpr auto alloc = allocData<SboAny>();
+    std::optional<MsgType> result = std::move(*ptr.value());
+    static constexpr auto alloc = allocData<MsgType>();
     m_pool.deallocate(ptr.value(), alloc.size, alloc.align);
     return result;
 }
-bool StdMessageQueue::tryPopAvail(IQueue<SboAny>& data)
+bool StdMessageQueue::tryPopAvail(IQueue<MsgType>& data)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
     if (m_queue.empty())
         return false;
 
-    static constexpr auto alloc = allocData<SboAny>();
+    static constexpr auto alloc = allocData<MsgType>();
     if (m_queue.size() > data.capacity()) {
         for (size_t i = 0; i < data.capacity(); ++i) {
             auto* ptr = m_queue[i];
@@ -271,7 +271,7 @@ private:
     void createMutexImpl(IPolymorphic<OSAL::Mutex>& mutex) const override { mutex.construct<StdMutex>(); }
 
     // --- Message Queue ---
-    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<SboAny*>& store, IPool& pool) const override 
+    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<MessageQueue::MsgType*>& store, IPool& pool) const override 
     { 
         queue.construct<StdMessageQueue>(store, pool); 
     }
