@@ -82,14 +82,14 @@ public:
 
     StaticAny(const StaticAny& other) 
     {
-        if (other.has_value()) {
+        if (other.hasValue()) {
             other.m_ctrl->copy(&other, this);
         }
     }
 
     StaticAny(StaticAny&& other) noexcept 
     {
-        if (other.has_value()) {
+        if (other.hasValue()) {
             other.m_ctrl->move(&other, this);
         }
     }
@@ -128,7 +128,7 @@ public:
     {
         if (this != &other) {
             reset();
-            if (other.has_value()) {
+            if (other.hasValue()) {
                 other.m_ctrl->copy(&other, this);
             }
         }
@@ -139,7 +139,7 @@ public:
     {
         if (this != &other) {
             reset();
-            if (other.has_value()) {
+            if (other.hasValue()) {
                 other.m_ctrl->move(&other, this);
             }
         }
@@ -183,7 +183,7 @@ public:
 
     void reset() noexcept 
     {
-        if (has_value()) {
+        if (hasValue()) {
             m_ctrl->destroy(this);
             m_ctrl = &emptyCtrl;
         }
@@ -196,9 +196,14 @@ public:
         other = std::move(temp);
     }
 
-    bool has_value() const noexcept 
+    bool hasValue() const noexcept 
     {
         return m_ctrl != &emptyCtrl;
+    }
+
+    operator bool() const noexcept 
+    {
+        return hasValue();
     }
 
     const std::type_info& type() const noexcept 
@@ -277,7 +282,7 @@ private:
     template <typename T>
     static constexpr ControlBlock ctrlFor = {
         .destroy = [](StaticAny* self) {
-            if (self->has_value()) {
+            if (self->hasValue()) {
                 std::destroy_at(self->asUncheckedPtr<T>());
             }
         },

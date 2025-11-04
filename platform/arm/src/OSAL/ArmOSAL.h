@@ -58,7 +58,7 @@ void ArmThread::shutdown()
         tx_thread_terminate(&m_thread);
     }
 }
-bool ArmThread::setPriority(int prio, int policy)
+bool ArmThread::setPriority(int prio, int)
 {
     UINT prevPrio;
     return tx_thread_priority_change(&m_thread, prio, &prevPrio) == TX_SUCCESS;
@@ -121,7 +121,7 @@ void ArmCyclicThread::shutdown()
         tx_thread_terminate(&m_thread);
     }
 }
-bool ArmCyclicThread::setPriority(int prio, int policy)
+bool ArmCyclicThread::setPriority(int prio, int)
 {
     UINT prevPrio;
     return tx_thread_priority_change(&m_thread, prio, &prevPrio) == TX_SUCCESS;
@@ -169,13 +169,13 @@ VOID ArmCyclicThread::cyclicTaskWrapper(ULONG context)
 }
 
 // --- Message-Queue ---
-ArmMessageQueue::ArmMessageQueue(IObjectStore<SboAny>& store)
-    : m_store(store)
+ArmMessageQueue::ArmMessageQueue(IObjectStore<MsgType*>& store, IPool& pool)
+    : m_pool(pool), m_store(store)
 {
     static std::atomic_size_t id = 0;
     m_id = id++;
 
-    constexpr auto MSG_SIZE = sizeof(SboAny);
+    constexpr auto MSG_SIZE = sizeof(MsgType);
 
     CHAR name[32];
     snprintf(name, sizeof(name), "Message Queue %zu", m_id);
@@ -187,30 +187,40 @@ ArmMessageQueue::ArmMessageQueue(IObjectStore<SboAny>& store)
 
     EATK_ASSERT(status == TX_SUCCESS, "failed to create queue");
 }
+
 ArmMessageQueue::~ArmMessageQueue()
 {
     tx_queue_delete(&m_queue);
 }
+
 bool ArmMessageQueue::empty() const 
 {  
     ULONG enqueued = 0;
     tx_queue_info_get(const_cast<TX_QUEUE*>(&m_queue), NULL, &enqueued, NULL, NULL, NULL, NULL);
     return enqueued == 0;
 }
-bool ArmMessageQueue::push(SboAny&& msg) 
+
+bool ArmMessageQueue::push(MsgType&& msg) 
 { 
-    if constexpr (std::is_move_constructible_v<SboAny>) {
-        return tx_queue_send(&m_queue, &msg, TX_NO_WAIT) == TX_SUCCESS; // CHECK IF WORKS
+    if constexpr (std::is_move_constructible_v<MsgType>) {
+        static constexpr auto alloc = allocData<MsgType>();
+        auto* ptr = static_cast<MsgType*>(m_pool.allocate(alloc.size, alloc.align));
+        std::construct_at(ptr, std::move(msg));
+        return tx_queue_send(&m_queue, &ptr, TX_NO_WAIT) == TX_SUCCESS; // CHECK IF WORKS
     }
     else {
         return false;
     }
 }
-bool ArmMessageQueue::pushMany(IQueue<SboAny>&& data)
+
+bool ArmMessageQueue::pushMany(IQueue<MsgType>&& data)
 {
-    if constexpr (std::is_move_constructible_v<SboAny> && std::is_move_assignable_v<SboAny>) {
+    if constexpr (std::is_move_constructible_v<MsgType> && std::is_move_assignable_v<MsgType>) {
+        static constexpr auto alloc = allocData<MsgType>();
         for (auto& msg : data) {
-            if (tx_queue_send(&m_queue, &msg, TX_NO_WAIT) != TX_SUCCESS) {
+            auto* ptr = static_cast<MsgType*>(m_pool.allocate(alloc.size, alloc.align));
+            std::construct_at(ptr, std::move(msg));
+            if (tx_queue_send(&m_queue, &ptr, TX_NO_WAIT) != TX_SUCCESS) {
                 return false;
             }
         }
@@ -220,46 +230,64 @@ bool ArmMessageQueue::pushMany(IQueue<SboAny>&& data)
         return false;
     }
 }
-std::optional<SboAny> ArmMessageQueue::pop()
+
+std::optional<OSAL::MessageQueue::MsgType> ArmMessageQueue::pop()
 {
-    SboAny msg{};
-    if (tx_queue_receive(&m_queue, &msg, TX_WAIT_FOREVER) == TX_SUCCESS) {
-        return std::move(msg);
+    MsgType* ptr;
+    if (tx_queue_receive(&m_queue, &ptr, TX_WAIT_FOREVER) == TX_SUCCESS) {
+        std::optional<MsgType> msg = std::move(*ptr);
+        static constexpr auto alloc = allocData<MsgType>();
+        m_pool.deallocate(ptr, alloc.size, alloc.align);
+        return msg;
     }
     return std::nullopt;
 }
-bool ArmMessageQueue::popAvail(IQueue<SboAny>& data)
+
+bool ArmMessageQueue::popAvail(IQueue<MsgType>& data)
 {
-    SboAny msg{};
-    if (tx_queue_receive(&m_queue, &msg, TX_WAIT_FOREVER) != TX_SUCCESS) {
+    MsgType* ptr;
+    if (tx_queue_receive(&m_queue, &ptr, TX_WAIT_FOREVER) != TX_SUCCESS) {
         return false;
     }
 
-    data.push(std::move(msg));
-    while (tx_queue_receive(&m_queue, &msg, TX_NO_WAIT) == TX_SUCCESS) {
-        data.push(std::move(msg));
+    data.push(std::move(*ptr));
+    static constexpr auto alloc = allocData<MsgType>();
+    m_pool.deallocate(ptr, alloc.size, alloc.align);
+
+    while (tx_queue_receive(&m_queue, &ptr, TX_NO_WAIT) == TX_SUCCESS) {
+        data.push(std::move(*ptr));
+        m_pool.deallocate(ptr, alloc.size, alloc.align);
     }
 
     return true;
 }
-std::optional<SboAny> ArmMessageQueue::tryPop()
+
+std::optional<OSAL::MessageQueue::MsgType> ArmMessageQueue::tryPop()
 {
-    SboAny msg{};
-    if (tx_queue_receive(&m_queue, &msg, TX_NO_WAIT) == TX_SUCCESS) {
-        return std::move(msg);
+    MsgType* ptr;
+    if (tx_queue_receive(&m_queue, &ptr, TX_NO_WAIT) == TX_SUCCESS) {
+        std::optional<MsgType> msg = std::move(*ptr);
+        static constexpr auto alloc = allocData<MsgType>();
+        m_pool.deallocate(ptr, alloc.size, alloc.align);
+        return msg;
     }
     return std::nullopt;
 }
-bool ArmMessageQueue::tryPopAvail(IQueue<SboAny>& data)
+
+bool ArmMessageQueue::tryPopAvail(IQueue<MsgType>& data)
 {
-    SboAny msg{};
-    if (tx_queue_receive(&m_queue, &msg, TX_NO_WAIT) != TX_SUCCESS) {
+    MsgType* ptr;
+    if (tx_queue_receive(&m_queue, &ptr, TX_NO_WAIT) != TX_SUCCESS) {
         return false;
     }
 
-    data.push(std::move(msg));
-    while (tx_queue_receive(&m_queue, &msg, TX_NO_WAIT) == TX_SUCCESS) {
-        data.push(std::move(msg));
+    data.push(std::move(*ptr));
+    static constexpr auto alloc = allocData<MsgType>();
+    m_pool.deallocate(ptr, alloc.size, alloc.align);
+    
+    while (tx_queue_receive(&m_queue, &ptr, TX_NO_WAIT) == TX_SUCCESS) {
+        data.push(std::move(*ptr));
+        m_pool.deallocate(ptr, alloc.size, alloc.align);
     }
 
     return true;
@@ -362,9 +390,9 @@ private:
     void createCyclicThreadImpl(IPolymorphic<OSAL::CyclicThread>& cyclicThread) const override { cyclicThread.construct<ArmCyclicThread>(); }
 
     // --- Message Queue ---
-    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<SboAny>& store) const override 
+    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<OSAL::MessageQueue::MsgType*>& store, IPool& pool) const override 
     { 
-        queue.construct<ArmMessageQueue>(store); 
+        queue.construct<ArmMessageQueue>(store, pool); 
     }
 };
 

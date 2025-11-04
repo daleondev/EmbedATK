@@ -23,20 +23,3 @@ const OSAL& OSAL::instance()
 #endif
     return s_instance;
 }
-
-// template <typename T, size_t N>
-// void OSAL::createMessageQueue(IPolymorphic<OSAL::MessageQueue<T, N>>& queue)
-// {
-//     using ImplType = typename MessageQueueImpl<T, N>::Type;
-//     queue.template construct<ImplType>(); 
-// }
-
-// #include <format>
-// #if !defined(EATK_DISABLE_LOGGING) && defined(__cpp_lib_format)
-// #include "EmbedATK/Core/Logger.h"
-// template void OSAL::createMessageQueue(IPolymorphic<OSAL::MessageQueue<ILogger::LogData*, 1024>>&);
-// #endif
-
-// #include "Ecat/EcatIO.h"
-// template void OSAL::createMessageQueue(IPolymorphic<OSAL::MessageQueue<EcatIO::IOReq, EcatIO::MSG_QUEUE_SIZE>>&);
-// template void OSAL::createMessageQueue(IPolymorphic<OSAL::MessageQueue<EcatIO::IOResp, EcatIO::MSG_QUEUE_SIZE>>&);

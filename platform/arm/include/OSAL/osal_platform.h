@@ -60,19 +60,20 @@ private:
 class ArmMessageQueue : public OSAL::MessageQueue
 {
 public:
-    ArmMessageQueue(IObjectStore<SboAny>& store);
+    ArmMessageQueue(IObjectStore<MsgType*>& store, IPool& pool);
     ~ArmMessageQueue();
 private:
     bool empty() const override;
-    bool push(SboAny&& msg) override;
-    bool pushMany(IQueue<SboAny>&& data) override;
-    std::optional<SboAny> pop() override;
-    bool popAvail(IQueue<SboAny>& data) override;
-    std::optional<SboAny> tryPop() override;
-    bool tryPopAvail(IQueue<SboAny>& data) override;
+    bool push(MsgType&& msg) override;
+    bool pushMany(IQueue<MsgType>&& data) override;
+    std::optional<MsgType> pop() override;
+    bool popAvail(IQueue<MsgType>& data) override;
+    std::optional<MsgType> tryPop() override;
+    bool tryPopAvail(IQueue<MsgType>& data) override;
     
     size_t m_id;
-    IObjectStore<SboAny>& m_store;
+    IPool& m_pool;
+    IObjectStore<MsgType*>& m_store;
     TX_QUEUE m_queue;
 
     friend class ArmOSAL;

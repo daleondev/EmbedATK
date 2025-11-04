@@ -67,6 +67,12 @@ target_compile_options(EmbedATK
         $<$<CXX_COMPILER_ID:MSVC>:/FI"${CMAKE_CURRENT_SOURCE_DIR}/src/pch.h">
 )
 
+# --- Compile Definitions ---
+target_compile_definitions(EmbedATK 
+    PUBLIC 
+        EATK_ENABLE_ASSERTS
+)
+
 # --- Platform Specific Definitions ---
 set(X86_ARCH_REGEX "^(x86_64|AMD64)$")
 set(ARM_ARCH_REGEX "^(arm|aarch64|armv7l|arm64)$")

@@ -22,4 +22,7 @@
 
 #include "OSAL/OSAL.h"
 
+#include "StateMachine/State.h"
 #include "StateMachine/StateMachine.h"
+#include "StateMachine/StateTransition.h"
+#include "StateMachine/SubstateGroup.h"

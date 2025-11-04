@@ -124,10 +124,10 @@ std::optional<OSAL::MessageQueue::MsgType> StdMessageQueue::pop()
     auto ptr = m_queue.pop();
     if (!ptr.has_value()) return std::nullopt;
 
-    std::optional<MsgType> result = std::move(*ptr.value());
+    std::optional<MsgType> msg = std::move(*ptr.value());
     static constexpr auto alloc = allocData<MsgType>();
     m_pool.deallocate(ptr.value(), alloc.size, alloc.align);
-    return result;
+    return msg;
 }
 bool StdMessageQueue::popAvail(IQueue<MsgType>& data)
 {
@@ -271,7 +271,7 @@ private:
     void createMutexImpl(IPolymorphic<OSAL::Mutex>& mutex) const override { mutex.construct<StdMutex>(); }
 
     // --- Message Queue ---
-    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<MessageQueue::MsgType*>& store, IPool& pool) const override 
+    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<OSAL::MessageQueue::MsgType*>& store, IPool& pool) const override 
     { 
         queue.construct<StdMessageQueue>(store, pool); 
     }
