@@ -11,15 +11,15 @@ set(CMAKE_CXX_FLAGS_RELEASE "-Os -g0")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -frtti -fno-threadsafe-statics -fexceptions")
 
-set(THREADX_ARCH cortex_m7)
-set(THREADX_TOOLCHAIN gnu)
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/eclipse_threadx/threadx)
-
 add_library(Platform INTERFACE)
-target_link_libraries(Platform 
+target_include_directories(Platform 
     INTERFACE
-        threadx
+        ${CMAKE_CURRENT_LIST_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/stm/stm32h7xx-hal-driver/Inc
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/stm/cmsis-core/Core/Include
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/stm/cmsis-device-h7/Include
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/eclipse_threadx/threadx/common/inc
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/eclipse_threadx/threadx/ports/cortex_m7/gnu/inc
 )
 # target_include_directories(Platform 
 #     SYSTEM 

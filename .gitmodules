@@ -13,3 +13,12 @@
 [submodule "external/eclipse_threadx/filex"]
 	path = external/eclipse_threadx/filex
 	url = https://github.com/eclipse-threadx/filex.git
+[submodule "external/stm/stm32h7xx-hal-driver"]
+	path = external/stm/stm32h7xx-hal-driver
+	url = https://github.com/STMicroelectronics/stm32h7xx-hal-driver.git
+[submodule "external/stm/cmsis-device-h7"]
+	path = external/stm/cmsis-device-h7
+	url = https://github.com/STMicroelectronics/cmsis-device-h7.git
+[submodule "external/stm/cmsis-core"]
+	path = external/stm/cmsis-core
+	url = https://github.com/STMicroelectronics/cmsis-core.git
