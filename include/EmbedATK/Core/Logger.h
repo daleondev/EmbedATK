@@ -212,7 +212,7 @@
                     continue;
 
                 for (auto& anyMsg : localQueue) {
-                    LogData* msg = anyMsg.as<LogData*>();
+                    LogData* msg = anyMsg.asUnchecked<LogData*>();
                     const auto& [level, timestamp, location, message] = *msg;
 
                     if (level == LogLevel::Abort)

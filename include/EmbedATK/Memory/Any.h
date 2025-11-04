@@ -164,7 +164,7 @@ public:
     {
         validateStorage<T>();
         reset();
-        T* newObj = std::construct_at(asPtr<T>(), std::forward<Args>(args)...);
+        T* newObj = std::construct_at(asUncheckedPtr<T>(), std::forward<Args>(args)...);
         m_ctrl = &ctrlFor<T>;
         return *newObj;
     }
@@ -176,7 +176,7 @@ public:
     {
         validateStorage<T>();
         reset();
-        T* newObj = std::construct_at(asPtr<T>(), il, std::forward<Args>(args)...);
+        T* newObj = std::construct_at(asUncheckedPtr<T>(), il, std::forward<Args>(args)...);
         m_ctrl = &ctrlFor<T>;
         return *newObj;
     }
@@ -207,19 +207,31 @@ public:
     }
 
     template <typename T>
-    T* asPtr() 
+    T* asUncheckedPtr() 
     {
         return reinterpret_cast<T*>(m_buff.data());
     }
 
     template <typename T>
-    const T* asPtr() const 
+    const T* asUncheckedPtr() const 
     {
         return reinterpret_cast<const T*>(m_buff.data());
     }
 
     template <typename T>
-    const T* tryAsPtr() const
+    const T& asUnchecked() const
+    {
+        return *asUncheckedPtr<T>();
+    }
+
+    template <typename T>
+    T& asUnchecked()
+    {
+        return *asUncheckedPtr<T>();
+    }
+
+    template <typename T>
+    const T* asPtr() const
     {
         if (type() != typeid(T)) {
             return nullptr;
@@ -228,7 +240,7 @@ public:
     }
 
     template <typename T>
-    T* tryAsPtr()
+    T* asPtr()
     {
         if (type() != typeid(T)) {
             return nullptr;
@@ -237,15 +249,21 @@ public:
     }
 
     template <typename T>
-    const T& as() const
+    std::optional<std::reference_wrapper<const T>> as() const
     {
-        return *asPtr<T>();
+        auto* ptr = asPtr<T>();
+        return ptr == nullptr ? 
+            std::nullopt : 
+            std::ref(*ptr);
     }
 
     template <typename T>
-    T& as()
+    std::optional<std::reference_wrapper<T>> as()
     {
-        return *asPtr<T>();
+        auto* ptr = asPtr<T>();
+        return ptr == nullptr ? 
+            std::nullopt : 
+            std::ref(*ptr);
     }
 
 private:
@@ -260,15 +278,15 @@ private:
     static constexpr ControlBlock ctrlFor = {
         .destroy = [](StaticAny* self) {
             if (self->has_value()) {
-                std::destroy_at(self->asPtr<T>());
+                std::destroy_at(self->asUncheckedPtr<T>());
             }
         },
         .copy = [](const StaticAny* from, StaticAny* to) {
-            std::construct_at(to->asPtr<T>(), from->as<T>());
+            std::construct_at(to->asUncheckedPtr<T>(), from->asUnchecked<T>());
             to->m_ctrl = from->m_ctrl;
         },
         .move = [](StaticAny* from, StaticAny* to) {
-            std::construct_at(to->asPtr<T>(), std::move(from->as<T>()));
+            std::construct_at(to->asUncheckedPtr<T>(), std::move(from->asUnchecked<T>()));
             to->m_ctrl = from->m_ctrl;
             from->reset();
         },
