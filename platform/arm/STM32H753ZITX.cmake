@@ -11,11 +11,15 @@ set(CMAKE_CXX_FLAGS_RELEASE "-Os -g0")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -frtti -fno-threadsafe-statics -fexceptions")
 
+set(THREADX_ARCH cortex_m7)
+set(THREADX_TOOLCHAIN gnu)
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/eclipse_threadx/threadx)
+
 add_library(Platform INTERFACE)
-target_include_directories(Platform 
+target_link_libraries(Platform 
     INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/eclipse_threadx/threadx/common/inc
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/eclipse_threadx/threadx/ports/cortex_m7/gnu/inc
+        threadx
 )
 # target_include_directories(Platform 
 #     SYSTEM 
@@ -36,8 +40,4 @@ target_compile_definitions(Platform
         NX_BSD_RAW_SUPPORT
         NX_DISABLE_BSD_RAW_PACKET_DUPLICATE
         NX_BSD_PRINT_ERRORS
-)
-target_compile_features(Platform 
-    INTERFACE
-        cxx_std_23
 )
