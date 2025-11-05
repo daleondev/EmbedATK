@@ -3,6 +3,7 @@
 #include "EmbedATK/Core/Assert.h"
 
 #include <tx_api.h>
+#include <stm32h7xx_hal.h>
 
 extern "C" {
     extern RTC_HandleTypeDef* g_rtc;
