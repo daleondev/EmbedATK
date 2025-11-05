@@ -34,4 +34,5 @@
 #include <filesystem>
 #include <regex>
 
-#include "osal_platform.h"
+#include "OSAL/osal_platform.h"
+#include "Network/network_adapter_platform.h"

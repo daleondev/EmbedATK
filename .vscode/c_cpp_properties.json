@@ -7,7 +7,7 @@
                 "${workspaceFolder}/src",
                 "${workspaceFolder}/include",
                 "${workspaceFolder}/platform",
-                "${workspaceFolder}/platform/linux/include/OSAL",
+                "${workspaceFolder}/platform/linux/include",
                 "${workspaceFolder}/external/magic_enum/include",
                 "${workspaceFolder}/external/reflect",
                 "${workspaceFolder}/build/_deps/gtest-src/googletest/include",

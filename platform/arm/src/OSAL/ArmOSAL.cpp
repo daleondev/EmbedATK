@@ -4,9 +4,9 @@
 
 #include <tx_api.h>
 
-// extern "C" {
-//     extern RTC_HandleTypeDef* g_rtc;
-// }
+extern "C" {
+    extern RTC_HandleTypeDef* g_rtc;
+}
 
 // --- Mutex ---
 ArmMutex::ArmMutex()
@@ -335,25 +335,24 @@ private:
 
     Timestamp currentTimeImpl() const override
     {
-        // if (!g_rtc)
-        //     return {};
+        if (!g_rtc)
+            return {};
 
-        // RTC_DateTypeDef date;
-        // RTC_TimeTypeDef time;
+        RTC_DateTypeDef date;
+        RTC_TimeTypeDef time;
 
-        // HAL_RTC_GetDate(g_rtc, &date, RTC_FORMAT_BIN);
-        // HAL_RTC_GetTime(g_rtc, &time, RTC_FORMAT_BIN);
+        HAL_RTC_GetDate(g_rtc, &date, RTC_FORMAT_BIN);
+        HAL_RTC_GetTime(g_rtc, &time, RTC_FORMAT_BIN);
 
-        // Timestamp ts;
-        // ts.year        = static_cast<uint16_t>(date.Year);
-        // ts.month       = static_cast<uint8_t>(date.Month);
-        // ts.day         = static_cast<uint8_t>(date.Date);
-        // ts.hour        = static_cast<uint8_t>(time.Hours);
-        // ts.minute      = static_cast<uint8_t>(time.Minutes);
-        // ts.second      = static_cast<uint8_t>(time.Seconds);
-        // ts.millisecond = static_cast<uint16_t>(((time.SecondFraction - time.SubSeconds) * 1000) / (time.SecondFraction + 1));
-        // return ts;
-        return Timestamp{};
+        Timestamp ts;
+        ts.year        = static_cast<uint16_t>(date.Year);
+        ts.month       = static_cast<uint8_t>(date.Month);
+        ts.day         = static_cast<uint8_t>(date.Date);
+        ts.hour        = static_cast<uint8_t>(time.Hours);
+        ts.minute      = static_cast<uint8_t>(time.Minutes);
+        ts.second      = static_cast<uint8_t>(time.Seconds);
+        ts.millisecond = static_cast<uint16_t>(((time.SecondFraction - time.SubSeconds) * 1000) / (time.SecondFraction + 1));
+        return ts;
     }
 
     bool sleepImpl(uint64_t duration_us) const override

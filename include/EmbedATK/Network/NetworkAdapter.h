@@ -21,12 +21,8 @@ struct NetworkAdapterInfo
 class INetworkAdapter
 {
 public:
-    static constexpr AllocData NETWORK_ADAPTER_ALLOC_DATA = {
-		.size = 128,
-		.align = alignof(NetworkAdapterInfo)
-	};
-
 	static constexpr size_t NETWORK_ADAPTERS_MAX = 16;
+	
 	using Adapters = StaticVector<NetworkAdapterInfo, NETWORK_ADAPTERS_MAX>;
 	using AdaptersConstRef = std::reference_wrapper<const Adapters>;
 	static std::expected<AdaptersConstRef, std::string> getNetworkAdapters();
@@ -43,6 +39,12 @@ public:
 
 	const NetworkAdapterInfo& getInfo() const { return m_info; }
 	bool isSocketOpen() const{ return m_open; }
+
+	struct StaticImpl;
+    struct DynamicImpl
+    {
+        using Type = DynamicPolymorphic<INetworkAdapter>;
+    };
 
 protected:
 	INetworkAdapter(const NetworkAdapterInfo& info)

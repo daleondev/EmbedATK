@@ -9,9 +9,20 @@ int main()
         EATK_ERROR("Failed to get network adapters: {}", adapters.error());
     }
 
-    for (auto& a : adapters->get()) {
-        EATK_INFO("{} - {}", a.name, a.desc);
+    NetworkAdapterInfo info;
+    for (auto& adpt : adapters->get()) {
+        EATK_INFO("{} - {}", adpt.name, adpt.desc);
+        #if defined(EATK_PLATFORM_WINDOWS)
+		    if (adpt.desc.contains("Intel(R) Ethernet Connection"))
+                info = adpt;
+        #else
+            if (adpt.name.contains("enp0s31f6"))
+                info = adpt;
+        #endif
     }
+
+    INetworkAdapter::StaticImpl::Type adapter;
+    INetworkAdapter::create(adapter, info);
     
     EATK_SHUTDOWN_LOG();
     return 0;
