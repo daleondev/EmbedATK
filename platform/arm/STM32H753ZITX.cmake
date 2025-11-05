@@ -20,12 +20,14 @@ target_include_directories(Platform
         ${CMAKE_CURRENT_SOURCE_DIR}/external/stm/cmsis-device-h7/Include
         ${CMAKE_CURRENT_SOURCE_DIR}/external/eclipse_threadx/threadx/common/inc
         ${CMAKE_CURRENT_SOURCE_DIR}/external/eclipse_threadx/threadx/ports/cortex_m7/gnu/inc
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/eclipse_threadx/netxduo/common/inc
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/eclipse_threadx/netxduo/ports/cortex_m7/gnu/inc
 )
-# target_include_directories(Platform 
-#     SYSTEM 
-#     INTERFACE
-#         ${CMAKE_CURRENT_LIST_DIR}/Middlewares/ST/netxduo/addons/BSD
-# )
+target_include_directories(Platform 
+    SYSTEM 
+    INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/eclipse_threadx/netxduo/addons/BSD
+)
 target_compile_definitions(Platform 
     INTERFACE
         USE_PWR_LDO_SUPPLY 
