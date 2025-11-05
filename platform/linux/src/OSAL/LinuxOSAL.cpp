@@ -1,8 +1,6 @@
-#pragma once
-
 #if defined(EATK_PLATFORM_LINUX)
 
-#include "OSAL/StdOSAL.h"
+#include "OSAL/StdOSAL.cpp"
 
 #include <arpa/inet.h>
 

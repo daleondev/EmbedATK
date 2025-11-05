@@ -22,6 +22,8 @@
 
 #include "OSAL/OSAL.h"
 
+#include "Network/NetworkAdapter.h"
+
 #include "StateMachine/State.h"
 #include "StateMachine/StateMachine.h"
 #include "StateMachine/StateTransition.h"

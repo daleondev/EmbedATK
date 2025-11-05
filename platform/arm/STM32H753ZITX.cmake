@@ -32,8 +32,8 @@ target_compile_definitions(Platform
     INTERFACE
         USE_PWR_LDO_SUPPLY 
         USE_NUCLEO_64 
-        # TX_INCLUDE_USER_DEFINE_FILE 
-        # NX_INCLUDE_USER_DEFINE_FILE 
+        TX_INCLUDE_USER_DEFINE_FILE 
+        NX_INCLUDE_USER_DEFINE_FILE 
         USE_HAL_DRIVER 
         STM32H753xx
         $<$<CONFIG:Debug>:DEBUG>

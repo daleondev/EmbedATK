@@ -1,5 +1,3 @@
-#pragma once
-
 #if defined(EATK_PLATFORM_ARM)
 
 #include "EmbedATK/Network/NetworkAdapter.h"

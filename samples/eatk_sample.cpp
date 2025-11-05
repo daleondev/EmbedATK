@@ -4,12 +4,15 @@ int main()
 {
     EATK_INIT_LOG();
 
-    EATK_INFO("Hallo welt {}", 5);
+    auto adapters = INetworkAdapter::getNetworkAdapters();
+    if (!adapters) {
+        EATK_ERROR("Failed to get network adapters: {}", adapters.error());
+    }
 
-    for (int i = 0; i < 100; ++i) {
-        EATK_INFO("Loop {}", i);
-    } 
-
+    for (auto& a : adapters->get()) {
+        EATK_INFO("{} - {}", a.name, a.desc);
+    }
+    
     EATK_SHUTDOWN_LOG();
     return 0;
 }

@@ -3,13 +3,13 @@
 #include "EmbedATK/Network/NetworkAdapter.h"
 
 #if defined(EATK_PLATFORM_WINDOWS)
-#include "windows/src/Network/WindowsNetworkAdapter.h"
+	#include "windows/src/Network/WindowsNetworkAdapter.cpp"
 #elif defined(EATK_PLATFORM_LINUX)
-#include "linux/src/Network/LinuxNetworkAdapter.h"
+	#include "linux/src/Network/LinuxNetworkAdapter.cpp"
 #elif defined(EATK_PLATFORM_ARM)
-#include "arm/src/Network/ArmNetworkAdapter.cpp"
+	#include "arm/src/Network/ArmNetworkAdapter.cpp"
 #else
-#error "invalid platform"
+	#error "Unsupported platform"
 #endif
 
 std::expected<INetworkAdapter::AdaptersConstRef, std::string> INetworkAdapter::getNetworkAdapters()
