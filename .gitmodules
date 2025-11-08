@@ -22,3 +22,6 @@
 [submodule "external/stm/cmsis-core"]
 	path = external/stm/cmsis-core
 	url = https://github.com/STMicroelectronics/cmsis-core.git
+[submodule "external/stm32h7xx-nucleo-bsp"]
+	path = external/stm32h7xx-nucleo-bsp
+	url = https://github.com/STMicroelectronics/stm32h7xx-nucleo-bsp.git
