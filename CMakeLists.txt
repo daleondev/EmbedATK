@@ -37,6 +37,7 @@ target_include_directories(EmbedATK
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/reflect>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/external/CubeMX/Core/Inc>
     PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/platform>
