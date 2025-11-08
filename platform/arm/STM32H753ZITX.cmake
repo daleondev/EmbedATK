@@ -11,6 +11,10 @@ set(CMAKE_CXX_FLAGS_RELEASE "-Os -g0")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -frtti -fno-threadsafe-statics -fexceptions")
 
+set(THREADX_ARCH cortex_m7)
+set(THREADX_TOOLCHAIN gnu)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../../external/eclipse_threadx/threadx)
+
 add_library(Platform INTERFACE)
 
 target_sources(Platform
@@ -62,6 +66,11 @@ target_compile_definitions(Platform
         USE_HAL_DRIVER
         STM32H753xx
         $<$<CONFIG:Debug>:DEBUG>
+)
+
+target_link_libraries(Platform
+    INTERFACE
+        threadx
 )
 
 # add_library(Platform INTERFACE)
