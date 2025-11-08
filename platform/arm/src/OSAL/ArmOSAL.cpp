@@ -43,11 +43,11 @@ bool ArmThread::start()
     snprintf(name, sizeof(name), "Task Done Sem %zu", id);
     tx_semaphore_create(&m_taskDone, name, 0);
 
-    snprintf(name, sizeof(name), "Thread %zu", id);
-    UINT status = tx_thread_create(&m_thread, name,
+    snprintf(m_name, sizeof(m_name), "Thread %zu", id);
+    UINT status = tx_thread_create(&m_thread, m_name,
         taskWrapper, reinterpret_cast<uintptr_t>(this),
         m_stack.data(), m_stack.size(),
-        15, 15, TX_NO_TIME_SLICE, TX_AUTO_START);
+        m_prio, m_prio, TX_NO_TIME_SLICE, TX_AUTO_START);
 
     return status == TX_SUCCESS;
 }
@@ -59,8 +59,11 @@ void ArmThread::shutdown()
 }
 bool ArmThread::setPriority(int prio, int)
 {
-    UINT prevPrio;
-    return tx_thread_priority_change(&m_thread, prio, &prevPrio) == TX_SUCCESS;
+    UINT prevPrio = m_prio;
+    if (tx_thread_priority_change(&m_thread, prio, &prevPrio) != TX_SUCCESS)
+        return false;
+    m_prio = prio;
+    return true;
 }
 VOID ArmThread::taskWrapper(ULONG context)
 {
@@ -99,11 +102,11 @@ bool ArmCyclicThread::start(uint64_t cycleTime_us)
     if (tx_semaphore_create(&m_shutdown, name, 0) != TX_SUCCESS)
         return false;
 
-    snprintf(name, sizeof(name), "Cyclic Thread %zu", id);
-    UINT status = tx_thread_create(&m_thread, name,
+    snprintf(m_name, sizeof(m_name), "Cyclic Thread %zu", id);
+    UINT status = tx_thread_create(&m_thread, m_name,
         cyclicTaskWrapper, reinterpret_cast<uintptr_t>(this),
         m_stack.data(), m_stack.size(),
-        15, 15, TX_NO_TIME_SLICE, TX_AUTO_START);
+        m_prio, m_prio, TX_NO_TIME_SLICE, TX_AUTO_START);
 
     if (status != TX_SUCCESS)
         return false;
@@ -122,8 +125,11 @@ void ArmCyclicThread::shutdown()
 }
 bool ArmCyclicThread::setPriority(int prio, int)
 {
-    UINT prevPrio;
-    return tx_thread_priority_change(&m_thread, prio, &prevPrio) == TX_SUCCESS;
+    UINT prevPrio = m_prio;
+    if (tx_thread_priority_change(&m_thread, prio, &prevPrio) != TX_SUCCESS)
+        return false;
+    m_prio = prio;
+    return true;
 }
 bool ArmCyclicThread::isRunning() const { return m_running; }
 VOID ArmCyclicThread::cyclicTaskWrapper(ULONG context)

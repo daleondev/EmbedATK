@@ -1,5 +1,6 @@
 set(THREADX_ARCH cortex_m7)
 set(THREADX_TOOLCHAIN gnu)
+set(TX_ENABLE_STACK_CHECKING ON)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../../external/eclipse_threadx/threadx)
 set(NXD_ENABLE_FILE_SERVERS OFF)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../../external/eclipse_threadx/netxduo)

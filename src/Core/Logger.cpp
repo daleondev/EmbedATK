@@ -10,7 +10,7 @@ constexpr size_t LOGGER_STACK_SIZE = 1024;
 #else
 constexpr size_t LOGGER_STACK_SIZE = 16384;
 #endif
-alignas(16) static std::array<std::byte, LOGGER_STACK_SIZE> g_loggerStackBuff;
+StaticBuffer<LOGGER_STACK_SIZE, alignof(std::max_align_t)> g_loggerStackBuff;
 std::span<std::byte> g_loggerStack = g_loggerStackBuff;
 
 #if defined(EATK_PLATFORM_ARM)
@@ -23,9 +23,9 @@ using ConcreteLogger = std::tuple<Logger<LOGGER_MSG_QUEUE_SIZE>>;
 static StaticPolymorphic<ILogger, ConcreteLogger> staticLogger;
 ILogger* g_logger = nullptr;
 
-void ILogger::init()
+void ILogger::init(int prio)
 {
-    staticLogger.construct<Logger<LOGGER_MSG_QUEUE_SIZE>>();
+    staticLogger.construct<Logger<LOGGER_MSG_QUEUE_SIZE>>(prio);
     g_logger = staticLogger.get();
 }
 

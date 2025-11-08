@@ -43,6 +43,8 @@ public:
     virtual constexpr const ValueType& operator[](const size_t index) const = 0;
     virtual constexpr ValueType& at(size_t index) = 0;
     virtual constexpr const ValueType& at(size_t index) const = 0;
+    virtual constexpr operator std::span<ValueType>() = 0;
+    virtual constexpr operator std::span<const ValueType>() const = 0;
 
     // ----------------------------------------
     // --- manipulation
@@ -93,6 +95,8 @@ public:
     constexpr const ValueType& operator[](const size_t index) const override { return m_data[index]; }
     constexpr ValueType& at(const size_t index) override { return m_data.at(index); }
     constexpr const ValueType& at(const size_t index) const override { return m_data.at(index); }
+    constexpr operator std::span<ValueType>() override { return m_data; }
+    constexpr operator std::span<const ValueType>() const override { return m_data; }
     
     // ----------------------------------------
     // --- manipulation

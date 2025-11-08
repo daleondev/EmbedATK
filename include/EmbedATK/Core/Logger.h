@@ -11,7 +11,7 @@
 
     #include <regex>
 
-    #define EATK_INIT_LOG()                     ILogger::init()
+    #define EATK_INIT_LOG(prio)                 ILogger::init(prio)
     #define EATK_SHUTDOWN_LOG()                 ILogger::shutdown()
 
     #define EATK_TRACE_LOC(loc, fmt, ...)       g_logger->trace(true, loc, fmt, ##__VA_ARGS__)
@@ -59,7 +59,7 @@
     class ILogger
     {
     public:
-        static void init();
+        static void init(int prio);
         static void shutdown();
 
         enum class LogLevel 
@@ -143,12 +143,11 @@
     class Logger : public ILogger
     {
     public:
-        Logger()
+        Logger(int prio)
         {
             OSAL::createMessageQueue(m_queue);
 
-            OSAL::createThread(m_thread, g_loggerStack, &Logger::loggingTask, this);
-            m_thread.get()->setPriority(10);
+            OSAL::createThread(m_thread, prio, g_loggerStack, &Logger::loggingTask, this);
             m_thread.get()->start();
         }
 

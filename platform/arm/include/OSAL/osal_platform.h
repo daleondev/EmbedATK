@@ -29,6 +29,7 @@ private:
     bool setPriority(int prio, int policy) override;
     static VOID taskWrapper(ULONG context);
 
+    CHAR m_name[32];
     TX_THREAD m_thread;
     TX_SEMAPHORE m_taskDone;
 
@@ -46,11 +47,12 @@ private:
     bool isRunning() const override;
     static VOID cyclicTaskWrapper(ULONG context);
 
-    std::atomic_bool m_running;
+    std::atomic_bool m_running;  
     TX_SEMAPHORE m_started;
     TX_SEMAPHORE m_shutdown;
     uint64_t m_cycleTime_us;
 
+    CHAR m_name[32];
     TX_THREAD m_thread;
     TX_SEMAPHORE m_taskDone;
 

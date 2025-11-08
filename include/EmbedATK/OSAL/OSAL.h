@@ -78,17 +78,20 @@ public:
         virtual void shutdown() = 0;
         virtual bool setPriority(int prio, int policy = 0) = 0;
     protected: 
+        int m_prio;
         std::span<std::byte> m_stack;
         std::function<void()> m_task;
     private:
+        void setPrio(int prio) { m_prio = prio; }
         void setStack(std::span<std::byte> stack) { m_stack = stack; }
         void setTask(std::function<void()>&& task) { m_task = std::move(task); }
         friend class OSAL;
     };
     template<typename Callable, typename... Args>
-    static void createThread(IPolymorphic<Thread>& thread, std::span<std::byte> stack, Callable&& func, Args&&... args) 
+    static void createThread(IPolymorphic<Thread>& thread, int prio, std::span<std::byte> stack, Callable&& func, Args&&... args) 
     { 
         instance().createThreadImpl(thread); 
+        thread.get()->setPrio(prio);
         thread.get()->setStack(stack);
         auto task = std::bind(std::forward<Callable>(func), std::forward<Args>(args)...);
         thread.get()->setTask(std::move(task));
@@ -104,17 +107,20 @@ public:
         virtual bool setPriority(int prio, int policy = 0) = 0;
         virtual bool isRunning() const = 0;
     protected: 
+        int m_prio;
         std::span<std::byte> m_stack;
         std::function<void()> m_cyclicTask;
     private:
+        void setPrio(int prio) { m_prio = prio; }
         void setStack(std::span<std::byte> stack) { m_stack = stack; }
         void setCyclicTask(std::function<void()>&& cyclicTask) { m_cyclicTask = std::move(cyclicTask); }
         friend class OSAL;
     };
     template<typename Callable, typename... Args>
-    static void createCyclicThread(IPolymorphic<CyclicThread>& cyclicThread, std::span<std::byte> stack, Callable&& func, Args&&... args) 
+    static void createCyclicThread(IPolymorphic<CyclicThread>& cyclicThread, int prio, std::span<std::byte> stack, Callable&& func, Args&&... args) 
     { 
         instance().createCyclicThreadImpl(cyclicThread); 
+        cyclicThread.get()->setPrio(prio);
         cyclicThread.get()->setStack(stack);
         auto cyclicTask = std::bind(std::forward<Callable>(func), std::forward<Args>(args)...);
         cyclicThread.get()->setCyclicTask(std::move(cyclicTask));
