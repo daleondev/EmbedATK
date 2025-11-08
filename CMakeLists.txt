@@ -43,10 +43,10 @@ target_include_directories(EmbedATK
 )
 
 # --- Precompiled Headers ---
-target_precompile_headers(EmbedATK
-    PRIVATE
-        "src/pch.h"
-)
+# target_precompile_headers(EmbedATK
+#     PRIVATE
+#         "src/pch.h"
+# )
 
 # --- Link Libraries ---
 target_link_libraries(EmbedATK
