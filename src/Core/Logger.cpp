@@ -6,7 +6,7 @@
 #if !defined(EATK_DISABLE_LOGGING) && defined(__cpp_lib_format)
 
 #if defined(EATK_PLATFORM_ARM)
-constexpr size_t LOGGER_STACK_SIZE = 1024;
+constexpr size_t LOGGER_STACK_SIZE = 2*1024;
 #else
 constexpr size_t LOGGER_STACK_SIZE = 16384;
 #endif
@@ -14,7 +14,7 @@ StaticBuffer<LOGGER_STACK_SIZE, alignof(std::max_align_t)> g_loggerStackBuff;
 std::span<std::byte> g_loggerStack = g_loggerStackBuff;
 
 #if defined(EATK_PLATFORM_ARM)
-constexpr size_t LOGGER_MSG_QUEUE_SIZE = 64;
+constexpr size_t LOGGER_MSG_QUEUE_SIZE = 16;
 #else
 constexpr size_t LOGGER_MSG_QUEUE_SIZE = 1024;
 #endif

@@ -14,20 +14,21 @@
 
 std::expected<INetworkAdapter::AdaptersConstRef, std::string> INetworkAdapter::getNetworkAdapters()
 {
-	s_adapters.clear();
+// 	s_adapters.clear();
 
-#if defined(EATK_PLATFORM_WINDOWS)
-	auto result = WindowsNetworkAdapter::getNetworkAdapters(s_adapters);
-#elif defined(EATK_PLATFORM_LINUX)
-	auto result = LinuxNetworkAdapter::getNetworkAdapters(s_adapters);
-#elif defined(EATK_PLATFORM_ARM)
-	auto result = ArmNetworkAdapter::getNetworkAdapters(s_adapters);
-#endif
+// #if defined(EATK_PLATFORM_WINDOWS)
+// 	auto result = WindowsNetworkAdapter::getNetworkAdapters(s_adapters);
+// #elif defined(EATK_PLATFORM_LINUX)
+// 	auto result = LinuxNetworkAdapter::getNetworkAdapters(s_adapters);
+// #elif defined(EATK_PLATFORM_ARM)
+// 	auto result = ArmNetworkAdapter::getNetworkAdapters(s_adapters);
+// #endif
 
-	if (!result)
-		return std::unexpected(result.error());
+// 	if (!result)
+// 		return std::unexpected(result.error());
 
-	return std::ref(s_adapters);
+// 	return std::ref(s_adapters);
+	return std::unexpected("");
 }
 
 void INetworkAdapter::create(IPolymorphic<INetworkAdapter>& adapter, const NetworkAdapterInfo& info)

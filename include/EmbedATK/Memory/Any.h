@@ -280,7 +280,7 @@ private:
     };
 
     template <typename T>
-    static constexpr ControlBlock ctrlFor = {
+    inline static constexpr ControlBlock ctrlFor = {
         .destroy = [](StaticAny* self) {
             if (self->hasValue()) {
                 std::destroy_at(self->asUncheckedPtr<T>());
@@ -300,7 +300,7 @@ private:
         }
     };
 
-    static constexpr ControlBlock emptyCtrl = {
+    inline static constexpr ControlBlock emptyCtrl = {
         .destroy = nullptr,
         .copy = nullptr,
         .move = nullptr,
