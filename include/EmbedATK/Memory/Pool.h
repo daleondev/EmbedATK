@@ -61,6 +61,8 @@ public:
         std::destroy_at(ptr);
         std::pmr::memory_resource::deallocate(ptr, Block.size, Block.align);
     }
+    
+    bool hasSpace() const { return m_freeBlocks != nullptr; }
 
 private:
     void* do_allocate(size_t bytes, size_t alignment) override 

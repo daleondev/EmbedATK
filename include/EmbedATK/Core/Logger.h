@@ -175,6 +175,9 @@
 
         void addMessage(const LogLevel level, const Timestamp& timestamp, std::string&& location, std::string&& message) override
         {
+            if (!m_msgPool.hasSpace())
+                return;
+
             LogData* msg = createMessage(level, timestamp, std::move(location), std::move(message));
             m_queue.queue().get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<LogData*>, msg));
         }
@@ -203,7 +206,7 @@
 
         void loggingTask()
         {
-            StaticQueue<OSAL::MessageQueue::MsgType, 32> localQueue;
+            StaticQueue<OSAL::MessageQueue::MsgType, 8> localQueue;
 
             m_running = true;
             while (m_running || !m_queue.queue().get()->empty()) {

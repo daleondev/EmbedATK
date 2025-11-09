@@ -180,7 +180,7 @@ ArmMessageQueue::ArmMessageQueue(IObjectStore<MsgType*>& store, IPool& pool)
     static std::atomic_size_t id = 0;
     m_id = id++;
 
-    constexpr auto MSG_SIZE = sizeof(MsgType);
+    constexpr auto MSG_SIZE = sizeof(MsgType*);
 
     CHAR name[32];
     snprintf(name, sizeof(name), "Message Queue %zu", m_id);
@@ -218,6 +218,19 @@ bool ArmMessageQueue::push(MsgType&& msg)
     }
 }
 
+bool ArmMessageQueue::push(const MsgType& msg) 
+{ 
+    if constexpr (std::is_copy_constructible_v<MsgType>) {
+        static constexpr auto alloc = allocData<MsgType>();
+        auto* ptr = static_cast<MsgType*>(m_pool.allocate(alloc.size, alloc.align));
+        std::construct_at(ptr, msg);
+        return tx_queue_send(&m_queue, &ptr, TX_NO_WAIT) == TX_SUCCESS; // CHECK IF WORKS
+    }
+    else {
+        return false;
+    }
+}
+
 bool ArmMessageQueue::pushMany(IQueue<MsgType>&& data)
 {
     if constexpr (std::is_move_constructible_v<MsgType> && std::is_move_assignable_v<MsgType>) {
@@ -240,7 +253,7 @@ std::optional<OSAL::MessageQueue::MsgType> ArmMessageQueue::pop()
 {
     MsgType* ptr;
     if (tx_queue_receive(&m_queue, &ptr, TX_WAIT_FOREVER) == TX_SUCCESS) {
-        std::optional<MsgType> msg = std::move(*ptr);
+        MsgType msg(std::move(*ptr));
         static constexpr auto alloc = allocData<MsgType>();
         m_pool.deallocate(ptr, alloc.size, alloc.align);
         return msg;
@@ -271,7 +284,7 @@ std::optional<OSAL::MessageQueue::MsgType> ArmMessageQueue::tryPop()
 {
     MsgType* ptr;
     if (tx_queue_receive(&m_queue, &ptr, TX_NO_WAIT) == TX_SUCCESS) {
-        std::optional<MsgType> msg = std::move(*ptr);
+        MsgType msg(std::move(*ptr));
         static constexpr auto alloc = allocData<MsgType>();
         m_pool.deallocate(ptr, alloc.size, alloc.align);
         return msg;

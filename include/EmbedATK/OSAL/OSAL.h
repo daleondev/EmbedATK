@@ -134,6 +134,7 @@ public:
         virtual ~MessageQueue() = default;
         virtual bool empty() const = 0;
         virtual bool push(MsgType&& msg) = 0;
+        virtual bool push(const MsgType& msg) = 0;
         virtual bool pushMany(IQueue<MsgType>&& data) = 0;
         virtual std::optional<MsgType> pop() = 0;
         virtual bool popAvail(IQueue<MsgType>& data) = 0;
