@@ -130,7 +130,7 @@ public:
     class MessageQueue
     {
     public:
-        using MsgType = StaticAny<16>;
+        using MsgType = StaticAny<8>;
         virtual ~MessageQueue() = default;
         virtual bool empty() const = 0;
         virtual bool push(MsgType&& msg) = 0;
