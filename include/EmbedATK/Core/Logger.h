@@ -156,34 +156,13 @@
         ~Logger()
         {
             m_running = false;
-
-            // LogData* abortMsg = createMessage(LogLevel::Abort, Timestamp{}, "", "");
-            // m_queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<LogData*>, abortMsg));
-
             Utils::emplaceStaticMessageQueue<LogData>(m_queue, LogLevel::Abort, Timestamp{}, "", "");
-
             Utils::shutdownStaticThread(m_thread);
         }
 
     private:
-        // template<typename ...Args>
-        // LogData* createMessage(Args&&... args)
-        // {
-        //     return m_msgPool.template construct<LogData>(std::forward<Args>(args)...);
-        // }
-
-        // void destroyMessage(LogData* ptr)
-        // {
-        //     m_msgPool.destroy(ptr);
-        // }
-
         void addMessage(const LogLevel level, const Timestamp& timestamp, std::string&& location, std::string&& message) override
         {
-            // if (!m_msgPool.hasSpace())
-            //     return;
-
-            // LogData* msg = createMessage(level, timestamp, std::move(location), std::move(message));
-            // m_queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<LogData*>, msg));
             Utils::emplaceStaticMessageQueue<LogData>(m_queue, level, timestamp, std::move(location), std::move(message));
         }
 
@@ -233,7 +212,6 @@
             static_cast<Logger<MsgQueueSize, ThreadStackSize>*>(g_logger)->loggingTask(); 
         }, ThreadStackSize, 10> m_thread;
         Utils::StaticMessageQueue<OSAL::StaticImpl::MessageQueue, LogData, MsgQueueSize> m_queue;
-        // StaticBlockPool<MsgQueueSize, allocData<LogData>()> m_msgPool;
     };
 
 #else

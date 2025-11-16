@@ -27,15 +27,7 @@ namespace Utils {
     inline constexpr bool is_static_message_queue_v = is_static_message_queue<T>::value;
 
     template <typename T>
-    concept IsStaticMessageQueue = requires { 
-        typename T;
-        { T::queuePool };
-        { T::queueStore };
-        { T::queue };
-        { T::dataPool };
-
-        requires is_static_message_queue_v<T>;
-    };
+    concept IsStaticMessageQueue = is_static_message_queue_v<T>;
 
     template<IsStaticMessageQueue Queue>
     static constexpr void setupStaticMessageQueue(Queue& queue)
