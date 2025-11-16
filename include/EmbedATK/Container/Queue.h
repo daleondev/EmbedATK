@@ -513,9 +513,9 @@ public:
     Iterator insert(ConstIterator pos, Iterator first, Iterator last) override
     {
         if constexpr (std::is_copy_constructible_v<ValueType>) {
-            const auto copyStart = std::distance(ConstIterator(begin()), pos);
-            const auto copyCount = std::distance(first, last);
-            const auto copyEnd = copyStart + copyCount;
+            const size_t copyStart = std::distance(ConstIterator(begin()), pos);
+            const size_t copyCount = std::distance(first, last);
+            const size_t copyEnd = copyStart + copyCount;
 
             auto mutPos = Iterator(begin()+copyStart);
             if (copyCount == 0) return mutPos;
@@ -553,9 +553,9 @@ public:
     Iterator insert(ConstIterator pos, std::move_iterator<Iterator> first, std::move_iterator<Iterator> last) override
     {
         if constexpr (std::is_move_constructible_v<ValueType>) {
-            const auto copyStart = std::distance(ConstIterator(begin()), pos);
-            const auto copyCount = std::distance(first, last);
-            const auto copyEnd = copyStart + copyCount;
+            const size_t copyStart = std::distance(ConstIterator(begin()), pos);
+            const size_t copyCount = std::distance(first, last);
+            const size_t copyEnd = copyStart + copyCount;
 
             auto mutPos = Iterator(begin()+copyStart);
             if (copyCount == 0) return mutPos;

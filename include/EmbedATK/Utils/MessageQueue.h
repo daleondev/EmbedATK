@@ -8,6 +8,8 @@ namespace Utils {
     requires (std::is_base_of_v<IPolymorphic<OSAL::MessageQueue>, Queue>)
     struct StaticMessageQueue
     {
+        inline static constexpr size_t SIZE = Size;
+
         StaticBlockPool<Size, allocData<OSAL::MessageQueue::MsgType>()> queuePool;
         StaticObjectStore<OSAL::MessageQueue::MsgType*, Size> queueStore;
         Queue queue;
@@ -43,28 +45,31 @@ namespace Utils {
 
     template<IsStaticMessageQueue Queue, typename T>
     requires std::is_move_constructible_v<T>
-    static constexpr void pushStaticMessageQueue(Queue& queue, T&& msg)
+    static constexpr bool pushStaticMessageQueue(Queue& queue, T&& msg)
     {
+        if (!queue.dataPool.hasSpace()) return false;
         T* ptr = queue.dataPool.template construct<T>(std::move(msg));
-        queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<T*>, ptr));
+        return queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<T*>, ptr));
     }
 
     template<IsStaticMessageQueue Queue, typename T>
     requires std::is_copy_constructible_v<T>
-    static constexpr void pushStaticMessageQueue(Queue& queue, const T& msg)
+    static constexpr bool pushStaticMessageQueue(Queue& queue, const T& msg)
     {
+        if (!queue.dataPool.hasSpace()) return false;
         T* ptr = queue.dataPool.template construct<T>(msg);
-        queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<T*>, ptr));
+        return queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<T*>, ptr));
     }
 
     template<typename T, IsStaticMessageQueue Queue, typename ...Args>
-    static constexpr void emplaceStaticMessageQueue(Queue& queue, Args&&... args)
+    static constexpr bool emplaceStaticMessageQueue(Queue& queue, Args&&... args)
     {
+        if (!queue.dataPool.hasSpace()) return false;
         T* ptr = queue.dataPool.template construct<T>(std::forward<Args>(args)...);
-        queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<T*>, ptr));
+        return queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<T*>, ptr));
     }
 
-    template<IsStaticMessageQueue Queue, typename T>
+    template<typename T, IsStaticMessageQueue Queue>
     static constexpr std::optional<T> popStaticMessageQueue(Queue& queue)
     {
         std::optional<OSAL::MessageQueue::MsgType> ptr = queue.queue.get()->pop();
@@ -72,27 +77,25 @@ namespace Utils {
             return std::nullopt;
         }
         
-        std::optional<T> msg = std::move(*ptr.value() );
-        queue.dataPool.destroy(ptr);
+        std::optional<T> msg = std::move(*ptr->asUnchecked<T*>());
+        queue.dataPool.destroy(ptr->asUnchecked<T*>());
         return msg;
     }
 
-    template<IsStaticMessageQueue Queue, typename T>
-    static constexpr bool popAvailStaticMessageQueue(Queue& queue, IQueue<T>& data)
+    template<IsStaticMessageQueue Queue, typename T, size_t N>
+    static constexpr bool popAvailStaticMessageQueue(Queue& queue, StaticQueue<T, N>& data)
     {
-        StaticQueue<OSAL::MessageQueue::MsgType, queue.queueStore.size()> localQueue;
+        StaticQueue<OSAL::MessageQueue::MsgType, N> localQueue;
 
         if (!queue.queue.get()->popAvail(localQueue)) {
             return false;
         }
 
         data.clear();
-        while (!localQueue.empty()) {
-            OSAL::MessageQueue::MsgType ptr = queue.queue.get()->pop().value();
-            data.push(std::move(*ptr));
-            queue.dataPool.destroy(ptr);
+        for (OSAL::MessageQueue::MsgType& ptr : localQueue) {
+            data.push(std::move(*ptr.asUnchecked<T*>()));
+            queue.dataPool.destroy(ptr.asUnchecked<T*>());
         }
-
         return true;
     }
 

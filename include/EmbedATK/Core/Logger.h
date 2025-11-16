@@ -150,6 +150,7 @@
         {
             Utils::setupStaticMessageQueue(m_queue);
             Utils::setupStaticThread(m_thread);
+            m_thread.thread.get()->setPriority(prio);
         }
 
         ~Logger()
@@ -165,21 +166,21 @@
         }
 
     private:
-        template<typename ...Args>
-        LogData* createMessage(Args&&... args)
-        {
-            return m_msgPool.template construct<LogData>(std::forward<Args>(args)...);
-        }
+        // template<typename ...Args>
+        // LogData* createMessage(Args&&... args)
+        // {
+        //     return m_msgPool.template construct<LogData>(std::forward<Args>(args)...);
+        // }
 
-        void destroyMessage(LogData* ptr)
-        {
-            m_msgPool.destroy(ptr);
-        }
+        // void destroyMessage(LogData* ptr)
+        // {
+        //     m_msgPool.destroy(ptr);
+        // }
 
         void addMessage(const LogLevel level, const Timestamp& timestamp, std::string&& location, std::string&& message) override
         {
-            if (!m_msgPool.hasSpace())
-                return;
+            // if (!m_msgPool.hasSpace())
+            //     return;
 
             // LogData* msg = createMessage(level, timestamp, std::move(location), std::move(message));
             // m_queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<LogData*>, msg));
@@ -232,7 +233,7 @@
             static_cast<Logger<MsgQueueSize, ThreadStackSize>*>(g_logger)->loggingTask(); 
         }, ThreadStackSize, 10> m_thread;
         Utils::StaticMessageQueue<OSAL::StaticImpl::MessageQueue, LogData, MsgQueueSize> m_queue;
-        StaticBlockPool<MsgQueueSize, allocData<LogData>()> m_msgPool;
+        // StaticBlockPool<MsgQueueSize, allocData<LogData>()> m_msgPool;
     };
 
 #else
