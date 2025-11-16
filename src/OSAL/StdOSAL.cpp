@@ -85,6 +85,28 @@ bool StdMessageQueue::push(MsgType&& msg)
     }
 }
 
+bool StdMessageQueue::push(const MsgType& msg) 
+{ 
+    if constexpr (std::is_move_constructible_v<MsgType>) {
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_queue.full())
+                return false;
+
+            static constexpr auto alloc = allocData<MsgType>();
+            auto* ptr = static_cast<MsgType*>(m_pool.allocate(alloc.size, alloc.align));
+            std::construct_at(ptr, msg);
+            m_queue.push(ptr); 
+        }
+
+        m_condition.notify_one();
+        return true; 
+    }
+    else {
+        return false;
+    }
+}
+
 bool StdMessageQueue::pushMany(IQueue<MsgType>&& data)
 {
     if constexpr (std::is_move_constructible_v<MsgType> && std::is_move_assignable_v<MsgType>) {

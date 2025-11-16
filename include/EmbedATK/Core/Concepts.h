@@ -39,6 +39,19 @@ template <typename Derived, template <auto...> class BaseTemplate>
 concept IsTemplatedBaseOf = is_templated_base_of_v<BaseTemplate, Derived>;
 
 //------------------------------------------------------
+//                  Specialization of
+//------------------------------------------------------
+
+template <typename T, template <auto...> typename Primary>
+struct is_specialization_of : std::false_type {};
+
+template <template <auto...> typename Primary, auto... Args>
+struct is_specialization_of<Primary<Args...>, Primary> : std::true_type {};
+
+template <typename T, template <auto...> typename Primary>
+inline constexpr bool is_specialization_of_v = is_specialization_of<T, Primary>::value;
+
+//------------------------------------------------------
 //                      Tuple
 //------------------------------------------------------
 

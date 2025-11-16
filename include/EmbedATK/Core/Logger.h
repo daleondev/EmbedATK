@@ -4,6 +4,9 @@
 
 #include "EmbedATK/Container/Queue.h"
 
+#include "EmbedATK/Utils/MessageQueue.h"
+#include "EmbedATK/Utils/Thread.h"
+
 #include <format>
 #include <source_location>
 
@@ -139,16 +142,14 @@
     extern ILogger* g_logger;
     extern std::span<std::byte> g_loggerStack;
 
-    template<size_t MSG_QUEUE_SIZE>
+    template<size_t MsgQueueSize, size_t ThreadStackSize>
     class Logger : public ILogger
     {
     public:
         Logger(int prio)
         {
-            OSAL::createMessageQueue(m_queue);
-
-            OSAL::createThread(m_thread, prio, g_loggerStack, &Logger::loggingTask, this);
-            m_thread.get()->start();
+            Utils::setupStaticMessageQueue(m_queue);
+            Utils::setupStaticThread(m_thread);
         }
 
         ~Logger()
@@ -156,9 +157,9 @@
             m_running = false;
 
             LogData* abortMsg = createMessage(LogLevel::Abort, Timestamp{}, "", "");
-            m_queue.queue().get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<LogData*>, abortMsg));
+            m_queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<LogData*>, abortMsg));
 
-            m_thread.get()->shutdown();
+            Utils::shutdownStaticThread(m_thread);
         }
 
     private:
@@ -179,7 +180,7 @@
                 return;
 
             LogData* msg = createMessage(level, timestamp, std::move(location), std::move(message));
-            m_queue.queue().get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<LogData*>, msg));
+            m_queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<LogData*>, msg));
         }
 
         void printMessage(const LogLevel level, const Timestamp& timestamp, const std::string& location, const std::string& message) const override
@@ -209,8 +210,8 @@
             StaticQueue<OSAL::MessageQueue::MsgType, 8> localQueue;
 
             m_running = true;
-            while (m_running || !m_queue.queue().get()->empty()) {
-                if (!m_queue.queue().get()->popAvail(localQueue))
+            while (m_running || !m_queue.queue.get()->empty()) {
+                if (!m_queue.queue.get()->popAvail(localQueue))
                     continue;
 
                 for (auto& anyMsg : localQueue) {
@@ -229,9 +230,11 @@
         }
 
         std::atomic_bool m_running;
-        OSAL::StaticImpl::Thread m_thread;
-        OSAL::StaticMessageQueueDef<OSAL::StaticImpl::MessageQueue, MSG_QUEUE_SIZE> m_queue;
-        StaticBlockPool<MSG_QUEUE_SIZE, allocData<LogData>()> m_msgPool;
+        Utils::StaticThread<OSAL::StaticImpl::Thread, []() -> void {
+            static_cast<Logger<MsgQueueSize, ThreadStackSize>*>(g_logger)->loggingTask(); 
+        }, ThreadStackSize, 10> m_thread;
+        Utils::StaticMessageQueue<OSAL::StaticImpl::MessageQueue, MsgQueueSize> m_queue;
+        StaticBlockPool<MsgQueueSize, allocData<LogData>()> m_msgPool;
     };
 
 #else

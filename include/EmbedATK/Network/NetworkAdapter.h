@@ -50,7 +50,7 @@ protected:
 	INetworkAdapter(const NetworkAdapterInfo& info)
 		: m_info(info) {}
 
-	// inline static Adapters s_adapters;
+	inline static Adapters s_adapters;
 
 	NetworkAdapterInfo m_info;
 	bool m_open = false;

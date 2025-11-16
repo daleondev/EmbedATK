@@ -69,30 +69,21 @@ public:
     };
     static void createMutex(IPolymorphic<Mutex>& mutex) { instance().createMutexImpl(mutex); }
 
-    class IThread
+    // --- Thread ---
+    class Thread
     {
     public:
-        virtual ~IThread() = default;
+        virtual ~Thread() = default;
         virtual bool start() = 0;
         virtual void shutdown() = 0;
         virtual bool setPriority(int prio, int policy = 0) = 0;
     protected: 
         int m_prio;
         std::span<std::byte> m_stack;
+        std::function<void()> m_task;
     private:
         void setPrio(int prio) { m_prio = prio; }
         void setStack(std::span<std::byte> stack) { m_stack = stack; }
-        friend class OSAL;
-    };
-
-    // --- Thread ---
-    class Thread : public IThread
-    {
-    public:
-        virtual ~Thread() = default;
-    protected:
-        std::function<void()> m_task;
-    private:     
         void setTask(std::function<void()>&& task) { m_task = std::move(task); }
         friend class OSAL;
     };
@@ -107,37 +98,33 @@ public:
     }
 
     // --- Cyclic Thread ---
-    class CyclicThread : public IThread
+    class CyclicThread
     {
     public:
         virtual ~CyclicThread() = default;
+        virtual bool start(uint64_t cycleTime_us = 0) = 0;
+        virtual void shutdown() = 0;
+        virtual bool setPriority(int prio, int policy = 0) = 0;
         virtual bool isRunning() const = 0;
-    protected:
-        uint64_t m_cycleTime_us;
+    protected: 
+        int m_prio;
+        std::span<std::byte> m_stack;
         std::function<void()> m_cyclicTask;
     private:
-        void setCycleTime(uint64_t cycleTime_us) { m_cycleTime_us = cycleTime_us; }
+        void setPrio(int prio) { m_prio = prio; }
+        void setStack(std::span<std::byte> stack) { m_stack = stack; }
         void setCyclicTask(std::function<void()>&& cyclicTask) { m_cyclicTask = std::move(cyclicTask); }
         friend class OSAL;
     };
     template<typename Callable, typename... Args>
-    static void createCyclicThread(IPolymorphic<CyclicThread>& cyclicThread, int prio, std::span<std::byte> stack, uint64_t cycleTime_us, Callable&& func, Args&&... args) 
+    static void createCyclicThread(IPolymorphic<CyclicThread>& cyclicThread, int prio, std::span<std::byte> stack, Callable&& func, Args&&... args) 
     { 
         instance().createCyclicThreadImpl(cyclicThread); 
         cyclicThread.get()->setPrio(prio);
         cyclicThread.get()->setStack(stack);
-        cyclicThread.get()->setCycleTime(cycleTime_us);
         auto cyclicTask = std::bind(std::forward<Callable>(func), std::forward<Args>(args)...);
         cyclicThread.get()->setCyclicTask(std::move(cyclicTask));
     }
-
-    // template<bool IsCyclic = false>
-    // struct IThreadDef
-    // {
-    //     virtual IPolymorphic<MessageQueue>& queue() = 0;
-    //     virtual IObjectStore<MessageQueue::MsgType*>& store() = 0;
-    //     virtual IPool& pool() = 0;
-    // };
 
     // --- Message-Queue ---
     class MessageQueue
@@ -157,30 +144,6 @@ public:
     static void createMessageQueue(IPolymorphic<MessageQueue>& queue, IObjectStore<MessageQueue::MsgType*>& store, IPool& pool)
     {
         instance().createMessageQueueImpl(queue, store, pool);
-    }
-
-    struct IMessageQueueDef
-    {
-        virtual IPolymorphic<MessageQueue>& queue() = 0;
-        virtual IObjectStore<MessageQueue::MsgType*>& store() = 0;
-        virtual IPool& pool() = 0;
-    };
-    template<typename Impl, size_t N>
-    requires std::is_base_of_v<IPolymorphic<MessageQueue>, Impl>
-    struct StaticMessageQueueDef : public IMessageQueueDef
-    {
-    public:
-        IPolymorphic<MessageQueue>& queue() override { return m_queue; }
-        IObjectStore<MessageQueue::MsgType*>& store() override { return m_store; }
-        IPool& pool() override { return m_pool; }
-    private:
-        StaticBlockPool<N, allocData<MessageQueue::MsgType>()> m_pool;
-        StaticObjectStore<MessageQueue::MsgType*, N> m_store;
-        Impl m_queue;
-    };
-    static void createMessageQueue(IMessageQueueDef& def)
-    {
-        instance().createMessageQueueImpl(def.queue(), def.store(), def.pool());
     }
 
     struct StaticImpl;

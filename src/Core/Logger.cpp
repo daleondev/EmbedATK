@@ -6,32 +6,30 @@
 #if !defined(EATK_DISABLE_LOGGING) && defined(__cpp_lib_format)
 
 #if defined(EATK_PLATFORM_ARM)
-constexpr size_t LOGGER_STACK_SIZE = 2*1024;
-#else
-constexpr size_t LOGGER_STACK_SIZE = 16384;
-#endif
-StaticBuffer<LOGGER_STACK_SIZE, alignof(std::max_align_t)> g_loggerStackBuff;
-std::span<std::byte> g_loggerStack = g_loggerStackBuff;
-
-#if defined(EATK_PLATFORM_ARM)
 constexpr size_t LOGGER_MSG_QUEUE_SIZE = 16;
 #else
 constexpr size_t LOGGER_MSG_QUEUE_SIZE = 1024;
 #endif
 
-using ConcreteLogger = std::tuple<Logger<LOGGER_MSG_QUEUE_SIZE>>;
-static StaticPolymorphic<ILogger, ConcreteLogger> staticLogger;
+#if defined(EATK_PLATFORM_ARM)
+constexpr size_t LOGGER_STACK_SIZE = 2*1024;
+#else
+constexpr size_t LOGGER_STACK_SIZE = 16384;
+#endif
+
+using ConcreteLogger = Logger<LOGGER_MSG_QUEUE_SIZE, LOGGER_STACK_SIZE>;
+static StaticPolymorphic<ILogger, ConcreteLogger> s_logger;
 ILogger* g_logger = nullptr;
 
 void ILogger::init(int prio)
 {
-    staticLogger.construct<Logger<LOGGER_MSG_QUEUE_SIZE>>(prio);
-    g_logger = staticLogger.get();
+    s_logger.construct<Logger<LOGGER_MSG_QUEUE_SIZE, LOGGER_STACK_SIZE>>(prio);
+    g_logger = s_logger.get();
 }
 
 void ILogger::shutdown()
 {
-    staticLogger.destroy();
+    s_logger.destroy();
     g_logger = nullptr;
 }
 

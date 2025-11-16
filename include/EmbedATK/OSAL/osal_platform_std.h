@@ -59,6 +59,7 @@ public:
 private:
     bool empty() const override;
     bool push(MsgType&& msg) override;
+    bool push(const MsgType& msg) override;
     bool pushMany(IQueue<MsgType>&& data) override;
     std::optional<MsgType> pop() override;
     bool popAvail(IQueue<MsgType>& data) override;

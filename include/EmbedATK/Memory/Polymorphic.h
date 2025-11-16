@@ -249,10 +249,20 @@ namespace detail {
         >;
         using type = StaticPolymorphicStore<Base, MaxAllocData<DerivedTuple>::data>;
     };
+
+    template<typename T>
+    struct is_static_polymorphic_store : std::false_type {};
+    template<typename Base, AllocData Alloc>
+    struct is_static_polymorphic_store<StaticPolymorphicStore<Base, Alloc>> : std::true_type {};
 }
 
 template<typename Base, typename Derived>
 using StaticPolymorphic = typename detail::StaticPolymorphic<Base, Derived>::type;
+
+template<typename T>
+inline constexpr bool is_static_polymorphic_v = detail::is_static_polymorphic_store<T>::value;
+template <typename T>
+concept IsStaticPolymorphic = is_static_polymorphic_v<T>;
 
 //------------------------------------------------------
 //                      Dynamic

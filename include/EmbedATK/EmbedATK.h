@@ -28,3 +28,6 @@
 #include "StateMachine/StateMachine.h"
 #include "StateMachine/StateTransition.h"
 #include "StateMachine/SubstateGroup.h"
+
+#include "Utils/Thread.h"
+#include "Utils/Timestamp.h"
