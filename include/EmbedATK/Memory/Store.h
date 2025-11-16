@@ -89,7 +89,7 @@ public:
     // ----------------------------------------
     // --- information
     // ----------------------------------------
-     constexpr size_t size() const override { return m_data.size(); }
+    constexpr size_t size() const override { return m_data.size(); }
 
     // ----------------------------------------
     // --- data access
