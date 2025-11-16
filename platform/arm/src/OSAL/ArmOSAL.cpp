@@ -82,10 +82,12 @@ ArmCyclicThread::~ArmCyclicThread()
     tx_semaphore_delete(&m_shutdown);
     tx_semaphore_delete(&m_taskDone);
 }
-bool ArmCyclicThread::start()
+bool ArmCyclicThread::start(uint64_t cycleTime_us)
 {
     static std::atomic_size_t s_id = 0;
     const size_t id = s_id++;
+
+    m_cycleTime_us = cycleTime_us;
 
     CHAR name[64];
     snprintf(name, sizeof(name), "Cyclic Task Done Sem %zu", id);

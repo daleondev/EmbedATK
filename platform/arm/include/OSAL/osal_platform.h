@@ -41,7 +41,7 @@ class ArmCyclicThread : public OSAL::CyclicThread
 public:
     ~ArmCyclicThread();
 private:
-    bool start() override;
+    bool start(uint64_t cycleTime_us) override;
     void shutdown() override;
     bool setPriority(int prio, int policy) override;
     bool isRunning() const override;
@@ -50,6 +50,7 @@ private:
     std::atomic_bool m_running;  
     TX_SEMAPHORE m_started;
     TX_SEMAPHORE m_shutdown;
+    uint64_t m_cycleTime_us;
 
     CHAR m_name[32];
     TX_THREAD m_thread;
