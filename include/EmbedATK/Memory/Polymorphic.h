@@ -32,6 +32,9 @@ public:
     virtual Base* get() = 0;
     virtual const Base* get() const = 0;
 
+    Base* operator->() { return get(); }
+    const Base* operator->() const { return get(); }
+
     template<IsBaseOf<Base> Derived>
     Derived* as() { return static_cast<Derived*>(get()); }
 

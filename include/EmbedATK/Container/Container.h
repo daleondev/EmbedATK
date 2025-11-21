@@ -161,6 +161,16 @@ public:
         return m_self.get()->dereferenced();
     }
 
+    pointer operator->() 
+    { 
+        return &m_self.get()->dereferenced(); 
+    }
+
+    const pointer operator->() const 
+    { 
+        return &m_self.get()->dereferenced(); 
+    }
+
     reference operator[](difference_type n) const
     requires std::is_convertible_v<iterator_category, std::random_access_iterator_tag>
     {

@@ -53,6 +53,35 @@ namespace Utils {
         return queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<T*>, ptr));
     }
 
+    template<IsStaticMessageQueue Queue, typename T>
+    requires std::is_move_constructible_v<T>
+    static constexpr bool pushManyStaticMessageQueue(Queue& queue, IQueue<T>&& data)
+    {
+        for (T&& msg : data) {
+            if (!queue.dataPool.hasSpace()) return false;
+            T* ptr = queue.dataPool.template construct<T>(std::move(msg));
+            if (!queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<T*>, ptr))) {
+                return false;
+            }
+        }
+        data.clear();
+        return true;
+    }
+
+    template<IsStaticMessageQueue Queue, typename T>
+    requires std::is_copy_constructible_v<T>
+    static constexpr bool pushManyStaticMessageQueue(Queue& queue, const IQueue<T>& data)
+    {
+        for (const T& msg : data) {
+            if (!queue.dataPool.hasSpace()) return false;
+            T* ptr = queue.dataPool.template construct<T>(msg);
+            if (!queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<T*>, ptr))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     template<typename T, IsStaticMessageQueue Queue, typename ...Args>
     static constexpr bool emplaceStaticMessageQueue(Queue& queue, Args&&... args)
     {
