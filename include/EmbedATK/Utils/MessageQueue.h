@@ -57,7 +57,7 @@ namespace Utils {
     requires std::is_move_constructible_v<T>
     static constexpr bool pushManyStaticMessageQueue(Queue& queue, IQueue<T>&& data)
     {
-        for (T&& msg : data) {
+        for (T& msg : data) {
             if (!queue.dataPool.hasSpace()) return false;
             T* ptr = queue.dataPool.template construct<T>(std::move(msg));
             if (!queue.queue.get()->push(OSAL::MessageQueue::MsgType(std::in_place_type<T*>, ptr))) {

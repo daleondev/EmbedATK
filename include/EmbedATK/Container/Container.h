@@ -166,7 +166,7 @@ public:
         return &m_self.get()->dereferenced(); 
     }
 
-    const pointer operator->() const 
+    const T* operator->() const 
     { 
         return &m_self.get()->dereferenced(); 
     }
