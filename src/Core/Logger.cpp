@@ -12,7 +12,7 @@ constexpr size_t LOGGER_MSG_QUEUE_SIZE = 1024;
 #endif
 
 #if defined(EATK_PLATFORM_ARM)
-constexpr size_t LOGGER_STACK_SIZE = 2*1024;
+constexpr size_t LOGGER_STACK_SIZE = 4*1024;
 #else
 constexpr size_t LOGGER_STACK_SIZE = 16384;
 #endif

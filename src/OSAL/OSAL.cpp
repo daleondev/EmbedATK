@@ -3,11 +3,11 @@
 #include "EmbedATK/OSAL/OSAL.h"
 
 #if defined(EATK_PLATFORM_WINDOWS)
-    #include "../../platform/windows/osal/WindowsOSAL.h"
+    #include "../../platform/windows/OSAL/WindowsOSAL.h"
 #elif defined(EATK_PLATFORM_LINUX)
-    #include "../../platform/linux/osal/LinuxOSAL.h"
+    #include "../../platform/linux/OSAL/LinuxOSAL.h"
 #elif defined(EATK_PLATFORM_ARM)
-    #include "../../platform/arm/osal/ArmOSAL.h"
+    #include "../../platform/arm/OSAL/ArmOSAL.h"
 #else
     #error "Unsupported Platform"
 #endif

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../src/OSAL/common/StdOSAL.h"
+#include "../../common/StdOSAL.h"
 
 #include <pthread.h>
 #include <semaphore.h>

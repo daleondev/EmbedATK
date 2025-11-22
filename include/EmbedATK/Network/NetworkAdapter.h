@@ -57,9 +57,9 @@ protected:
 };
 
 #if defined(EATK_PLATFORM_LINUX)
-    #include "../../../platform/linux/network/LinuxNetworkAdapter.h"
+    #include "../../../platform/linux/Network/LinuxNetworkAdapter.h"
 #elif defined(EATK_PLATFORM_ARM)
-    #include "../../../platform/arm/network/ArmNetworkAdapter.h"
+    #include "../../../platform/arm/Network/ArmNetworkAdapter.h"
 #elif defined(EATK_PLATFORM_WINDOWS)
     // #include "../../../platform/windows/network/WindowsNetworkAdapter.h"
 #endif

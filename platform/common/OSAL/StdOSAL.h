@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../include/EmbedATK/OSAL/OSAL.h"
+#include "EmbedATK/OSAL/OSAL.h"
 
 #include <mutex>
 #include <thread>

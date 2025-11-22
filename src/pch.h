@@ -37,11 +37,11 @@
 #include <regex>
 
 #if defined(EATK_PLATFORM_LINUX)
-    #include "../platform/linux/osal/LinuxOSAL.h"
-    #include "../platform/linux/network/LinuxNetworkAdapter.h"
+    #include "../platform/linux/OSAL/LinuxOSAL.h"
+    #include "../platform/linux/Network/LinuxNetworkAdapter.h"
 #elif defined(EATK_PLATFORM_ARM)
-    #include "../platform/arm/osal/ArmOSAL.h"
-    #include "../platform/arm/network/ArmNetworkAdapter.h"
+    #include "../platform/arm/OSAL/ArmOSAL.h"
+    #include "../platform/arm/Network/ArmNetworkAdapter.h"
 #elif defined(EATK_PLATFORM_WINDOWS)
     //
 #endif

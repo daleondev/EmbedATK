@@ -93,15 +93,15 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_LINUX)
         target_sources(EmbedATK
             PRIVATE
-                ${CMAKE_CURRENT_SOURCE_DIR}/src/OSAL/common/StdOSAL.cpp
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/osal/LinuxOSAL.cpp
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/network/LinuxNetworkAdapter.cpp
+                ${CMAKE_CURRENT_SOURCE_DIR}/platform/common/OSAL/StdOSAL.cpp
+                ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/OSAL/LinuxOSAL.cpp
+                ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/Network/LinuxNetworkAdapter.cpp
         )
         target_include_directories(EmbedATK
             PRIVATE
-                ${CMAKE_CURRENT_SOURCE_DIR}/src/OSAL/common
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/osal
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/network
+                ${CMAKE_CURRENT_SOURCE_DIR}/platform/common/OSAL
+                ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/OSAL
+                ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/Network
         )
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "${ARM_ARCH_REGEX}")
         target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_LINUX_ARM)
@@ -118,13 +118,13 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Generic")
         target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_ARM)
         target_sources(EmbedATK
             PRIVATE
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/osal/ArmOSAL.cpp
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/network/ArmNetworkAdapter.cpp
+                ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/OSAL/ArmOSAL.cpp
+                ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/Network/ArmNetworkAdapter.cpp
         )
         target_include_directories(EmbedATK
             PRIVATE
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/osal
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/network
+                ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/OSAL
+                ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/Network
         )
 
         include("${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/${TARGET_PLATFORM}.cmake")
