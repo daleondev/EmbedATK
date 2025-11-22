@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef __cplusplus
+
 #include <magic_enum/magic_enum.hpp>
 #include <magic_enum/magic_enum_switch.hpp>
 
@@ -42,4 +44,6 @@
     #include "../platform/arm/network/ArmNetworkAdapter.h"
 #elif defined(EATK_PLATFORM_WINDOWS)
     //
+#endif
+
 #endif
