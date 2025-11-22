@@ -1,6 +1,6 @@
 #if defined(EATK_PLATFORM_ARM)
 
-#include "../../../src/pch.h"
+#include "pch.h"
 #include "ArmNetworkAdapter.h"
 
 #include "nx_api.h"

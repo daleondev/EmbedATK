@@ -1,6 +1,6 @@
 #if defined(EATK_PLATFORM_ARM)
 
-#include "../../src/pch.h"
+#include "pch.h"
 #include "ArmOSAL.h"
 
 #include "EmbedATK/Core/Assert.h"

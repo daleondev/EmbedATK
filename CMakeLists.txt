@@ -97,12 +97,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
                 ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/OSAL/LinuxOSAL.cpp
                 ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/Network/LinuxNetworkAdapter.cpp
         )
-        target_include_directories(EmbedATK
-            PRIVATE
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/common/OSAL
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/OSAL
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/Network
-        )
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "${ARM_ARCH_REGEX}")
         target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_LINUX_ARM)
     else()
@@ -120,11 +114,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Generic")
             PRIVATE
                 ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/OSAL/ArmOSAL.cpp
                 ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/Network/ArmNetworkAdapter.cpp
-        )
-        target_include_directories(EmbedATK
-            PRIVATE
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/OSAL
-                ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/Network
         )
 
         include("${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/${TARGET_PLATFORM}.cmake")
