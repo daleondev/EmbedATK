@@ -149,7 +149,7 @@
         Logger(int prio)
         {
             Utils::setupStaticMessageQueue(m_queue);
-            Utils::setupStaticThread(m_thread);
+            Utils::setupStaticThread(m_thread, false);
             m_thread.thread.get()->setPriority(prio);
         }
 
@@ -158,6 +158,11 @@
             m_running = false;
             Utils::emplaceStaticMessageQueue<LogData>(m_queue, LogLevel::Abort, Timestamp{}, "", "");
             Utils::shutdownStaticThread(m_thread);
+        }
+
+        void start()
+        {
+            m_thread.thread.get()->start();
         }
 
     private:

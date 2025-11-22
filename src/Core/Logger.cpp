@@ -25,6 +25,7 @@ void ILogger::init(int prio)
 {
     s_logger.construct<Logger<LOGGER_MSG_QUEUE_SIZE, LOGGER_STACK_SIZE>>(prio);
     g_logger = s_logger.get();
+    s_logger.as<ConcreteLogger>()->start();
 }
 
 void ILogger::shutdown()
