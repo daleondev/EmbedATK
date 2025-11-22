@@ -1,5 +1,8 @@
 #if defined(EATK_PLATFORM_ARM)
 
+#include "../../src/pch.h"
+#include "ArmOSAL.h"
+
 #include "EmbedATK/Core/Assert.h"
 
 #include <tx_api.h>
@@ -311,106 +314,94 @@ bool ArmMessageQueue::tryPopAvail(IQueue<MsgType>& data)
     return true;
 }
 
-class ArmOSAL : public OSAL
+uint16_t ArmOSAL::hostToNetworkImpl(uint16_t h) const { return h; }
+uint16_t ArmOSAL::networkToHostImpl(uint16_t n) const { return n; }
+
+void ArmOSAL::printImpl(const char* msg) const { printf("%s", msg); }
+void ArmOSAL::printlnImpl(const char* msg) const { printf("%s\r\n", msg); }
+void ArmOSAL::eprintImpl(const char* emsg) const { printf("%s", emsg); }
+void ArmOSAL::eprintlnImpl(const char* emsg) const { printf("%s\r\n", emsg); }
+void ArmOSAL::setConsoleColorImpl(ConsoleColor col) const
 {
-private:
-    // --- Network ---
-    uint16_t hostToNetworkImpl(uint16_t h) const override { return h; }
-    uint16_t networkToHostImpl(uint16_t n) const override { return n; }
-
-    // --- Printing ---
-    void printImpl(const char* msg) const override { printf("%s", msg); }
-    void printlnImpl(const char* msg) const override { printf("%s\r\n", msg); }
-    void eprintImpl(const char* emsg) const override { printf("%s", emsg); }
-    void eprintlnImpl(const char* emsg) const override { printf("%s\r\n", emsg); }
-    void setConsoleColorImpl(ConsoleColor col) const override
+    switch(col)
     {
-        switch(col)
-        {
-            case ConsoleColor::Green:
-                print("\033[32m");
-                break;
-            case ConsoleColor::Yellow:
-                print("\033[33m");
-                break;
-            case ConsoleColor::Red:
-                print("\033[31m");
-                break;
-            case ConsoleColor::Cyan:
-                print("\033[36m");
-                break;
-            default:
-                print("\033[0m");
-                break;
-        };
-    }
+        case ConsoleColor::Green:
+            printImpl("\033[32m");
+            break;
+        case ConsoleColor::Yellow:
+            printImpl("\033[33m");
+            break;
+        case ConsoleColor::Red:
+            printImpl("\033[31m");
+            break;
+        case ConsoleColor::Cyan:
+            printImpl("\033[36m");
+            break;
+        default:
+            printImpl("\033[0m");
+            break;
+    };
+}
 
-    // --- Time ---
-    uint64_t monotonicTimeImpl() const override
-    {
-        const auto ticks = tx_time_get();
-        const auto tick_us = 1000000 / TX_TIMER_TICKS_PER_SECOND;
-        return ticks * tick_us;
-    }
+uint64_t ArmOSAL::monotonicTimeImpl() const
+{
+    const auto ticks = tx_time_get();
+    const auto tick_us = 1000000 / TX_TIMER_TICKS_PER_SECOND;
+    return ticks * tick_us;
+}
 
-    Timestamp currentTimeImpl() const override
-    {
-        if (!g_rtc)
-            return {};
+Timestamp ArmOSAL::currentTimeImpl() const
+{
+    if (!g_rtc)
+        return {};
 
-        RTC_DateTypeDef date;
-        RTC_TimeTypeDef time;
+    RTC_DateTypeDef date;
+    RTC_TimeTypeDef time;
 
-        HAL_RTC_GetDate(g_rtc, &date, RTC_FORMAT_BIN);
-        HAL_RTC_GetTime(g_rtc, &time, RTC_FORMAT_BIN);
+    HAL_RTC_GetDate(g_rtc, &date, RTC_FORMAT_BIN);
+    HAL_RTC_GetTime(g_rtc, &time, RTC_FORMAT_BIN);
 
-        Timestamp ts;
-        ts.year        = static_cast<uint16_t>(date.Year);
-        ts.month       = static_cast<uint8_t>(date.Month);
-        ts.day         = static_cast<uint8_t>(date.Date);
-        ts.hour        = static_cast<uint8_t>(time.Hours);
-        ts.minute      = static_cast<uint8_t>(time.Minutes);
-        ts.second      = static_cast<uint8_t>(time.Seconds);
-        ts.millisecond = static_cast<uint16_t>(((time.SecondFraction - time.SubSeconds) * 1000) / (time.SecondFraction + 1));
-        return ts;
-    }
+    Timestamp ts;
+    ts.year        = static_cast<uint16_t>(date.Year);
+    ts.month       = static_cast<uint8_t>(date.Month);
+    ts.day         = static_cast<uint8_t>(date.Date);
+    ts.hour        = static_cast<uint8_t>(time.Hours);
+    ts.minute      = static_cast<uint8_t>(time.Minutes);
+    ts.second      = static_cast<uint8_t>(time.Seconds);
+    ts.millisecond = static_cast<uint16_t>(((time.SecondFraction - time.SubSeconds) * 1000) / (time.SecondFraction + 1));
+    return ts;
+}
 
-    bool sleepImpl(uint64_t duration_us) const override
-    {
-    	if (duration_us == 0) return true;
+bool ArmOSAL::sleepImpl(uint64_t duration_us) const
+{
+    if (duration_us == 0) return true;
 
-		constexpr auto tick_us = 1000000 / TX_TIMER_TICKS_PER_SECOND;
-        const auto ticks = duration_us / tick_us;
+    constexpr auto tick_us = 1000000 / TX_TIMER_TICKS_PER_SECOND;
+    const auto ticks = duration_us / tick_us;
 
-        tx_thread_sleep(ticks);
-        return true;
-    }
+    tx_thread_sleep(ticks);
+    return true;
+}
 
-    bool sleepUntilImpl(uint64_t time_us) const override
-    {
-    	const auto current_us = monotonicTimeImpl();
-    	if (time_us > current_us)
-    		sleepImpl(time_us - current_us);
-        return true;
-    }
+bool ArmOSAL::sleepUntilImpl(uint64_t time_us) const
+{
+    const auto current_us = monotonicTimeImpl();
+    if (time_us > current_us)
+        sleepImpl(time_us - current_us);
+    return true;
+}
 
-    // --- Timer ---
-    void createTimerImpl(IPolymorphic<OSAL::Timer>& timer) const override { timer.construct<Timer>(); }
+void ArmOSAL::createTimerImpl(IPolymorphic<OSAL::Timer>& timer) const { timer.construct<Timer>(); }
 
-    // --- Mutex ---
-    void createMutexImpl(IPolymorphic<OSAL::Mutex>& mutex) const override { mutex.construct<ArmMutex>(); }
+void ArmOSAL::createMutexImpl(IPolymorphic<OSAL::Mutex>& mutex) const { mutex.construct<ArmMutex>(); }
 
-    // --- Thread ---
-    void createThreadImpl(IPolymorphic<OSAL::Thread>& thread) const override { thread.construct<ArmThread>(); }
+void ArmOSAL::createThreadImpl(IPolymorphic<OSAL::Thread>& thread) const { thread.construct<ArmThread>(); }
 
-    // --- Cyclic Thread ---
-    void createCyclicThreadImpl(IPolymorphic<OSAL::CyclicThread>& cyclicThread) const override { cyclicThread.construct<ArmCyclicThread>(); }
+void ArmOSAL::createCyclicThreadImpl(IPolymorphic<OSAL::CyclicThread>& cyclicThread) const { cyclicThread.construct<ArmCyclicThread>(); }
 
-    // --- Message Queue ---
-    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<OSAL::MessageQueue::MsgType*>& store, IPool& pool) const override 
-    { 
-        queue.construct<ArmMessageQueue>(store, pool); 
-    }
-};
+void ArmOSAL::createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<OSAL::MessageQueue::MsgType*>& store, IPool& pool) const 
+{ 
+    queue.construct<ArmMessageQueue>(store, pool); 
+}
 
 #endif

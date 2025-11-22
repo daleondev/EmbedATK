@@ -1,6 +1,10 @@
 #pragma once
 
-#include "EmbedATK/OSAL/osal_platform_std.h"
+#include "../../src/OSAL/common/StdOSAL.h"
+
+#include <pthread.h>
+#include <semaphore.h>
+#include <atomic>
 
 class LinuxThread : public OSAL::Thread
 {
@@ -33,6 +37,20 @@ private:
 
     friend class LinuxOSAL;
 };
+
+class LinuxOSAL : public StdOSAL
+{
+private:
+    // --- Printing ---
+    void setConsoleColorImpl(ConsoleColor col) const override;
+
+    // --- Thread ---
+    void createThreadImpl(IPolymorphic<OSAL::Thread>& thread) const override;
+
+    // --- Cyclic Thread ---
+    void createCyclicThreadImpl(IPolymorphic<OSAL::CyclicThread>& cyclicThread) const override;
+};
+
 
 struct OSAL::StaticImpl
 {

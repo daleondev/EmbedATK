@@ -1,3 +1,8 @@
+#include "pch.h"
+#include "StdOSAL.h"
+
+#include <iostream>
+#include <thread>
 #include <chrono>
 #include <future>
 #include <bit>
@@ -58,7 +63,7 @@ bool StdCyclicThread::isRunning() const { return m_running; }
 
 // --- Message-Queue ---
 bool StdMessageQueue::empty() const 
-{  
+{
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_queue.empty();
 }
@@ -87,7 +92,7 @@ bool StdMessageQueue::push(MsgType&& msg)
 
 bool StdMessageQueue::push(const MsgType& msg) 
 { 
-    if constexpr (std::is_move_constructible_v<MsgType>) {
+    if constexpr (std::is_copy_constructible_v<MsgType>) {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_queue.full())
@@ -214,85 +219,79 @@ bool StdMessageQueue::tryPopAvail(IQueue<MsgType>& data)
     return true;
 }
 
-class StdOSAL : public OSAL
+
+// --- StdOSAL ---
+uint16_t StdOSAL::hostToNetworkImpl(uint16_t h) const 
 {
-private:
-    // --- Network ---
-    uint16_t hostToNetworkImpl(uint16_t h) const override 
-    {
-        if constexpr (std::endian::native == std::endian::little) {
-            return std::byteswap(h);
-        } else {
-            return h;
-        }
-    };
-    uint16_t networkToHostImpl(uint16_t n) const override 
-    { 
-        if constexpr (std::endian::native == std::endian::little) {
-            return std::byteswap(n);
-        } else {
-            return n;
-        }
-    };
-
-    // --- Printing ---
-    void printImpl(const char* msg) const override { std::cout << msg; }
-    void printlnImpl(const char* msg) const override { std::cout << msg << '\n'; }
-    void eprintImpl(const char* emsg) const override { std::cerr << emsg; }
-    void eprintlnImpl(const char* emsg) const override { std::cerr << emsg << '\n'; }
-
-    // --- Time ---
-    uint64_t monotonicTimeImpl() const override 
-    {
-        const auto time = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::steady_clock::now());
-        return time.time_since_epoch().count();
+    if constexpr (std::endian::native == std::endian::little) {
+        return std::byteswap(h);
+    } else {
+        return h;
     }
-
-    Timestamp currentTimeImpl() const override 
-    {
-        const auto zone = std::chrono::current_zone();
-        const auto now = std::chrono::system_clock::now();
-        const auto localTime = std::chrono::zoned_time(zone, now).get_local_time();
-        const auto startOfDay = std::chrono::floor<std::chrono::days>(localTime);
-        const auto timeOfDay = localTime - startOfDay;
-
-        const auto date = std::chrono::year_month_day(startOfDay);
-        const auto time = std::chrono::hh_mm_ss(timeOfDay);
-
-        Timestamp ts;
-        ts.year        = static_cast<uint16_t>(static_cast<int>(date.year()));
-        ts.month       = static_cast<uint8_t>(static_cast<unsigned int>(date.month()));
-        ts.day         = static_cast<uint8_t>(static_cast<unsigned int>(date.day()));
-        ts.hour        = static_cast<uint8_t>(time.hours().count());
-        ts.minute      = static_cast<uint8_t>(time.minutes().count());
-        ts.second      = static_cast<uint8_t>(time.seconds().count());
-        ts.millisecond = static_cast<uint16_t>(std::chrono::duration_cast<std::chrono::milliseconds>(time.subseconds()).count());
-        return ts;
+}
+uint16_t StdOSAL::networkToHostImpl(uint16_t n) const 
+{ 
+    if constexpr (std::endian::native == std::endian::little) {
+        return std::byteswap(n);
+    } else {
+        return n;
     }
+}
 
-    bool sleepImpl(uint64_t us) const override  
-    {
-        const auto duration = std::chrono::microseconds(us);
-        std::this_thread::sleep_for(duration); 
-        return true;
-    }
+void StdOSAL::printImpl(const char* msg) const { std::cout << msg; }
+void StdOSAL::printlnImpl(const char* msg) const { std::cout << msg << '\n'; }
+void StdOSAL::eprintImpl(const char* emsg) const { std::cerr << emsg; }
+void StdOSAL::eprintlnImpl(const char* emsg) const { std::cerr << emsg << '\n'; }
+void StdOSAL::setConsoleColorImpl(ConsoleColor col) const { EATK_UNUSED(col); }
 
-    bool sleepUntilImpl(uint64_t monotonic) const override 
-    {
-        const auto timepoint = std::chrono::steady_clock::time_point(std::chrono::microseconds(monotonic));
-        std::this_thread::sleep_until(timepoint); 
-        return true;
-    }
+uint64_t StdOSAL::monotonicTimeImpl() const 
+{
+    const auto time = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::steady_clock::now());
+    return time.time_since_epoch().count();
+}
 
-    // --- Timer ---
-    void createTimerImpl(IPolymorphic<OSAL::Timer>& timer) const override { timer.construct<StdTimer>(); }
+Timestamp StdOSAL::currentTimeImpl() const 
+{
+    const auto zone = std::chrono::current_zone();
+    const auto now = std::chrono::system_clock::now();
+    const auto localTime = std::chrono::zoned_time(zone, now).get_local_time();
+    const auto startOfDay = std::chrono::floor<std::chrono::days>(localTime);
+    const auto timeOfDay = localTime - startOfDay;
 
-    // --- Mutex ---
-    void createMutexImpl(IPolymorphic<OSAL::Mutex>& mutex) const override { mutex.construct<StdMutex>(); }
+    const auto date = std::chrono::year_month_day(startOfDay);
+    const auto time = std::chrono::hh_mm_ss(timeOfDay);
 
-    // --- Message Queue ---
-    void createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<OSAL::MessageQueue::MsgType*>& store, IPool& pool) const override 
-    { 
-        queue.construct<StdMessageQueue>(store, pool); 
-    }
-};
+    Timestamp ts;
+    ts.year        = static_cast<uint16_t>(static_cast<int>(date.year()));
+    ts.month       = static_cast<uint8_t>(static_cast<unsigned int>(date.month()));
+    ts.day         = static_cast<uint8_t>(static_cast<unsigned int>(date.day()));
+    ts.hour        = static_cast<uint8_t>(time.hours().count());
+    ts.minute      = static_cast<uint8_t>(time.minutes().count());
+    ts.second      = static_cast<uint8_t>(time.seconds().count());
+    ts.millisecond = static_cast<uint16_t>(std::chrono::duration_cast<std::chrono::milliseconds>(time.subseconds()).count());
+    return ts;
+}
+
+bool StdOSAL::sleepImpl(uint64_t us) const  
+{
+    const auto duration = std::chrono::microseconds(us);
+    std::this_thread::sleep_for(duration); 
+    return true;
+}
+
+bool StdOSAL::sleepUntilImpl(uint64_t monotonic) const 
+{
+    const auto timepoint = std::chrono::steady_clock::time_point(std::chrono::microseconds(monotonic));
+    std::this_thread::sleep_until(timepoint); 
+    return true;
+}
+
+void StdOSAL::createTimerImpl(IPolymorphic<OSAL::Timer>& timer) const { timer.construct<StdTimer>(); }
+
+void StdOSAL::createMutexImpl(IPolymorphic<OSAL::Mutex>& mutex) const { mutex.construct<StdMutex>(); }
+
+void StdOSAL::createMessageQueueImpl(IPolymorphic<OSAL::MessageQueue>& queue, IObjectStore<OSAL::MessageQueue::MsgType*>& store, IPool& pool) const 
+{ 
+    queue.construct<StdMessageQueue>(store, pool); 
+}
+

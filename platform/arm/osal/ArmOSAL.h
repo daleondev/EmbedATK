@@ -82,6 +82,42 @@ private:
     friend class ArmOSAL;
 };
 
+class ArmOSAL : public OSAL
+{
+private:
+    // --- Network ---
+    uint16_t hostToNetworkImpl(uint16_t h) const override;
+    uint16_t networkToHostImpl(uint16_t n) const override;
+
+    // --- Printing ---
+    void printImpl(const char* msg) const override;
+    void printlnImpl(const char* msg) const override;
+    void eprintImpl(const char* emsg) const override;
+    void eprintlnImpl(const char* emsg) const override;
+    void setConsoleColorImpl(ConsoleColor col) const override;
+
+    // --- Time ---
+    uint64_t monotonicTimeImpl() const override;
+    Timestamp currentTimeImpl() const override;
+    bool sleepImpl(uint64_t duration_us) const override;
+    bool sleepUntilImpl(uint64_t time_us) const override;
+
+    // --- Timer ---
+    void createTimerImpl(IPolymorphic<Timer>& timer) const override;
+
+    // --- Mutex ---
+    void createMutexImpl(IPolymorphic<Mutex>& mutex) const override;
+
+    // --- Thread ---
+    void createThreadImpl(IPolymorphic<Thread>& thread) const override;
+
+    // --- Cyclic Thread ---
+    void createCyclicThreadImpl(IPolymorphic<CyclicThread>& cyclicThread) const override;
+
+    // --- Message Queue ---
+    void createMessageQueueImpl(IPolymorphic<MessageQueue>& queue, IObjectStore<MessageQueue::MsgType*>& store, IPool& pool) const override;
+};
+
 struct OSAL::StaticImpl
 {
     using Timer         = StaticPolymorphic<OSAL::Timer, OSAL::Timer>;

@@ -20,7 +20,7 @@ file(GLOB_RECURSE SOURCES
     CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
-list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/OSAL/StdOSAL.cpp)
+
 file(GLOB_RECURSE HEADERS
     CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
@@ -31,6 +31,7 @@ target_sources(EmbedATK
         ${SOURCES}
         ${HEADERS}
 )
+
 
 # --- Include Directories ---
 target_include_directories(EmbedATK
@@ -44,10 +45,10 @@ target_include_directories(EmbedATK
 )
 
 # --- Precompiled Headers ---
-# target_precompile_headers(EmbedATK
-#     PRIVATE
-#         "src/pch.h"
-# )
+target_precompile_headers(EmbedATK
+    PRIVATE
+        "src/pch.h"
+)
 
 # --- Link Libraries ---
 target_link_libraries(EmbedATK
@@ -84,17 +85,14 @@ if(WIN32)
 elseif(APPLE)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "${X86_ARCH_REGEX}")
         target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_MACOS)
-        target_include_directories(EmbedATK PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/platform/macos/include)
     else()
         message(FATAL_ERROR "Unsupported Apple processor: ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "${X86_ARCH_REGEX}")
         target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_LINUX)
-        target_include_directories(EmbedATK PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/include)
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "${ARM_ARCH_REGEX}")
         target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_LINUX_ARM)
-        target_include_directories(EmbedATK PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux_arm/include)
     else()
         message(FATAL_ERROR "Unsupported Linux processor: ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
@@ -107,7 +105,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Generic")
         
         target_compile_definitions(EmbedATK PUBLIC EATK_PLATFORM_ARM)
         include("${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/${TARGET_PLATFORM}.cmake")
-        target_include_directories(EmbedATK PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/include)
         target_link_libraries(EmbedATK PUBLIC Platform)
 
         set(BUILD_SAMPLES OFF)
@@ -118,6 +115,33 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Generic")
 else()
     message(FATAL_ERROR "Unsupported Operating System: ${CMAKE_SYSTEM_NAME}")
 endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "${X86_ARCH_REGEX}")
+    target_sources(EmbedATK
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/OSAL/common/StdOSAL.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/osal/LinuxOSAL.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/network/LinuxNetworkAdapter.cpp
+    )
+    target_include_directories(EmbedATK
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/OSAL/common
+            ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/osal
+            ${CMAKE_CURRENT_SOURCE_DIR}/platform/linux/network
+    )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Generic" AND CMAKE_SYSTEM_PROCESSOR MATCHES "${ARM_ARCH_REGEX}")
+    target_sources(EmbedATK
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/osal/ArmOSAL.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/network/ArmNetworkAdapter.cpp
+    )
+    target_include_directories(EmbedATK
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/osal
+            ${CMAKE_CURRENT_SOURCE_DIR}/platform/arm/network
+    )
+endif()
+
 
 # --- Source Properties/Groups for IDE ---
 foreach(h IN LISTS HEADERS)

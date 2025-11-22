@@ -1,6 +1,6 @@
 #pragma once
 
-#include "OSAL.h"
+#include "../../include/EmbedATK/OSAL/OSAL.h"
 
 #include <mutex>
 #include <thread>
@@ -76,4 +76,32 @@ private:
     friend class StdOSAL;
 };
 
-// static_assert(std::is_default_constructible_v<StdMessageQueue>);
+class StdOSAL : public OSAL
+{
+protected:
+    // --- Network ---
+    uint16_t hostToNetworkImpl(uint16_t h) const override;
+    uint16_t networkToHostImpl(uint16_t n) const override;
+
+    // --- Printing ---
+    void printImpl(const char* msg) const override;
+    void printlnImpl(const char* msg) const override;
+    void eprintImpl(const char* emsg) const override;
+    void eprintlnImpl(const char* emsg) const override;
+    void setConsoleColorImpl(ConsoleColor col) const override;
+
+    // --- Time ---
+    uint64_t monotonicTimeImpl() const override;
+    Timestamp currentTimeImpl() const override;
+    bool sleepImpl(uint64_t us) const override;
+    bool sleepUntilImpl(uint64_t monotonic) const override;
+
+    // --- Timer ---
+    void createTimerImpl(IPolymorphic<Timer>& timer) const override;
+
+    // --- Mutex ---
+    void createMutexImpl(IPolymorphic<Mutex>& mutex) const override;
+
+    // --- Message Queue ---
+    void createMessageQueueImpl(IPolymorphic<MessageQueue>& queue, IObjectStore<MessageQueue::MsgType*>& store, IPool& pool) const override;
+};

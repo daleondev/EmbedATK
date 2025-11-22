@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EmbedATK/Network/NetworkAdapter.h"
+#include "../../../include/EmbedATK/Network/NetworkAdapter.h"
 
 class ArmNetworkAdapter : public INetworkAdapter
 {

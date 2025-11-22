@@ -34,5 +34,12 @@
 #include <filesystem>
 #include <regex>
 
-#include "OSAL/osal_platform.h"
-#include "Network/network_adapter_platform.h"
+#if defined(EATK_PLATFORM_LINUX)
+    #include "../platform/linux/osal/LinuxOSAL.h"
+    #include "../platform/linux/network/LinuxNetworkAdapter.h"
+#elif defined(EATK_PLATFORM_ARM)
+    #include "../platform/arm/osal/ArmOSAL.h"
+    #include "../platform/arm/network/ArmNetworkAdapter.h"
+#elif defined(EATK_PLATFORM_WINDOWS)
+    //
+#endif

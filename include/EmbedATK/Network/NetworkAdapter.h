@@ -55,3 +55,11 @@ protected:
 	NetworkAdapterInfo m_info;
 	bool m_open = false;
 };
+
+#if defined(EATK_PLATFORM_LINUX)
+    #include "../../../platform/linux/network/LinuxNetworkAdapter.h"
+#elif defined(EATK_PLATFORM_ARM)
+    #include "../../../platform/arm/network/ArmNetworkAdapter.h"
+#elif defined(EATK_PLATFORM_WINDOWS)
+    // #include "../../../platform/windows/network/WindowsNetworkAdapter.h"
+#endif

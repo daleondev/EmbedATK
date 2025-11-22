@@ -1,6 +1,7 @@
 #if defined(EATK_PLATFORM_LINUX)
 
-#include "EmbedATK/Network/NetworkAdapter.h"
+#include "pch.h"
+#include "LinuxNetworkAdapter.h"
 
 #include "EmbedATK/Core/Assert.h"
 

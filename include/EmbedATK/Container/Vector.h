@@ -2,6 +2,9 @@
 
 #include "Container.h"
 
+#include "EmbedATK/Memory/Pool.h"
+#include "EmbedATK/Memory/Store.h"
+
 //------------------------------------------------------
 //                      Vector
 //------------------------------------------------------

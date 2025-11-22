@@ -1,8 +1,11 @@
 #if defined(EATK_PLATFORM_LINUX)
 
-#include "OSAL/StdOSAL.cpp"
+#include "pch.h"
+#include "LinuxOSAL.h"
 
 #include <arpa/inet.h>
+#include <time.h>
+#include <cerrno>
 
 // --- Thread ---
 bool LinuxThread::start()
@@ -125,37 +128,31 @@ void* LinuxCyclicThread::cyclicTaskWrapper(void* context)
     return nullptr;
 }
 
-class LinuxOSAL : public StdOSAL
+// --- LinuxOSAL ---
+void LinuxOSAL::setConsoleColorImpl(ConsoleColor col) const
 {
-private:
-    // --- Printing ---
-    void setConsoleColorImpl(ConsoleColor col) const override
+    switch(col)
     {
-        switch(col)
-        {
-            case ConsoleColor::Green:
-                print("\033[32m");
-                break;
-            case ConsoleColor::Yellow:
-                print("\033[33m");
-                break;
-            case ConsoleColor::Red:
-                print("\033[31m");
-                break;
-            case ConsoleColor::Cyan:
-                print("\033[36m");
-                break;
-            default:
-                print("\033[0m");
-                break;
-        };
-    }
+        case ConsoleColor::Green:
+            print("\033[32m");
+            break;
+        case ConsoleColor::Yellow:
+            print("\033[33m");
+            break;
+        case ConsoleColor::Red:
+            print("\033[31m");
+            break;
+        case ConsoleColor::Cyan:
+            print("\033[36m");
+            break;
+        default:
+            print("\033[0m");
+            break;
+    };
+}
 
-    // --- Thread ---
-    void createThreadImpl(IPolymorphic<OSAL::Thread>& thread) const override { thread.construct<LinuxThread>(); }
+void LinuxOSAL::createThreadImpl(IPolymorphic<OSAL::Thread>& thread) const { thread.construct<LinuxThread>(); }
 
-    // --- Cyclic Thread ---
-    void createCyclicThreadImpl(IPolymorphic<OSAL::CyclicThread>& cyclicThread) const override { cyclicThread.construct<LinuxCyclicThread>(); }
-};
+void LinuxOSAL::createCyclicThreadImpl(IPolymorphic<OSAL::CyclicThread>& cyclicThread) const { cyclicThread.construct<LinuxCyclicThread>(); }
 
 #endif
