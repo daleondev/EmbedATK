@@ -27,13 +27,13 @@ int main()
     // EATK_SHUTDOWN_LOG();
 
     Utils::StaticThread<
-        OSAL::StaticImpl::CyclicThread, 
+        OSAL::StaticImpl::CyclicThread,
+        16384,
+        4,
         [](){
             EATK_INFO("THREAD");
             std::cout << "Thread" << std::endl;
         },
-        16384,
-        4,
         1000000
     > thread;
 

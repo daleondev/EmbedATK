@@ -213,9 +213,9 @@
         }
 
         std::atomic_bool m_running;
-        Utils::StaticThread<OSAL::StaticImpl::Thread, []() -> void {
+        Utils::StaticThread<OSAL::StaticImpl::Thread, ThreadStackSize, 10, []() -> void {
             static_cast<Logger<MsgQueueSize, ThreadStackSize>*>(g_logger)->loggingTask(); 
-        }, ThreadStackSize, 10> m_thread;
+        }> m_thread;
         Utils::StaticMessageQueue<OSAL::StaticImpl::MessageQueue, LogData, MsgQueueSize> m_queue;
     };
 
