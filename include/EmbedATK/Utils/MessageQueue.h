@@ -120,4 +120,21 @@ namespace Utils {
         return true;
     }
 
+    template<IsStaticMessageQueue Queue, typename T, size_t N>
+    static constexpr bool tryPopAvailStaticMessageQueue(Queue& queue, StaticQueue<T, N>& data)
+    {
+        StaticQueue<OSAL::MessageQueue::MsgType, N> localQueue;
+
+        if (!queue.queue.get()->tryPopAvail(localQueue)) {
+            return false;
+        }
+
+        data.clear();
+        for (OSAL::MessageQueue::MsgType& ptr : localQueue) {
+            data.push(std::move(*ptr.asUnchecked<T*>()));
+            queue.dataPool.destroy(ptr.asUnchecked<T*>());
+        }
+        return true;
+    }
+
 }
