@@ -69,3 +69,18 @@ constexpr StaticUniquePtr<T> make_static_unique(std::pmr::memory_resource* resou
     T* ptr = new (mem) T(std::forward<Args>(args)...);
     return StaticUniquePtr<T>(ptr, StaticDeleter<T>{resource});
 }
+
+//------------------------------------------------------
+//                    String Literal
+//------------------------------------------------------
+
+template<size_t N>
+struct StringLiteral
+{
+    constexpr StringLiteral(const char (&s)[N])
+    {
+        for (size_t i = 0; i < N; ++i) buff[i] = s[i];
+    }
+    constexpr operator const char*() const { return buff.data(); }
+    std::array<char, N> buff;
+};

@@ -46,7 +46,6 @@ bool ArmThread::start()
     snprintf(name, sizeof(name), "Task Done Sem %zu", id);
     tx_semaphore_create(&m_taskDone, name, 0);
 
-    snprintf(m_name, sizeof(m_name), "Thread %zu", id);
     UINT status = tx_thread_create(&m_thread, m_name,
         taskWrapper, reinterpret_cast<uintptr_t>(this),
         m_stack.data(), m_stack.size(),
@@ -105,7 +104,6 @@ bool ArmCyclicThread::start(uint64_t cycleTime_us)
     if (tx_semaphore_create(&m_shutdown, name, 0) != TX_SUCCESS)
         return false;
 
-    snprintf(m_name, sizeof(m_name), "Cyclic Thread %zu", id);
     UINT status = tx_thread_create(&m_thread, m_name,
         cyclicTaskWrapper, reinterpret_cast<uintptr_t>(this),
         m_stack.data(), m_stack.size(),

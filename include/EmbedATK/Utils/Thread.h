@@ -9,7 +9,7 @@ namespace Utils {
     template<typename T>
     inline constexpr bool is_task_v = std::invocable<T> && std::is_same_v<std::invoke_result_t<T>, void>;
 
-    template<IsStaticPolymorphic Thread, size_t StackSize, int Prio, auto Task = nullptr, uint64_t CycleTime_us = 0>
+    template<IsStaticPolymorphic Thread, StringLiteral Name, size_t StackSize, int Prio, auto Task = nullptr, uint64_t CycleTime_us = 0>
     requires
         (Task == nullptr || (is_task_v<decltype(Task)>)) &&
         (
@@ -18,6 +18,7 @@ namespace Utils {
         )
     struct StaticThread
     {
+        inline static constexpr const char* NAME = Name;
         inline static constexpr int PRIO = Prio;
         inline static constexpr bool IS_CYCLIC = std::is_base_of_v<IPolymorphic<OSAL::CyclicThread>, Thread>;
         inline static constexpr uint64_t CYCLE_TIME_US = CycleTime_us;
@@ -30,8 +31,8 @@ namespace Utils {
     template <typename T>
     struct is_static_thread : std::false_type {};
 
-    template<IsStaticPolymorphic Thread, size_t StackSize, int Prio, auto Task, uint64_t CycleTime_us>
-    struct is_static_thread<Utils::StaticThread<Thread, StackSize, Prio, Task, CycleTime_us>> : std::true_type {};
+    template<IsStaticPolymorphic Thread, StringLiteral Name, size_t StackSize, int Prio, auto Task, uint64_t CycleTime_us>
+    struct is_static_thread<Utils::StaticThread<Thread, Name, StackSize, Prio, Task, CycleTime_us>> : std::true_type {};
 
     template <typename T>
     inline constexpr bool is_static_thread_v = is_static_thread<T>::value;
@@ -48,6 +49,7 @@ namespace Utils {
 
             OSAL::createCyclicThread(
                 thread.thread,
+                thread.NAME,
                 thread.PRIO,
                 thread.stackBuff,
                 thread.TASK
@@ -61,6 +63,7 @@ namespace Utils {
             
             OSAL::createThread(
                 thread.thread,
+                thread.NAME,
                 thread.PRIO,
                 thread.stackBuff,
                 thread.TASK

@@ -28,6 +28,7 @@ int main()
 
     Utils::StaticThread<
         OSAL::StaticImpl::CyclicThread,
+        "TestThread",
         16384,
         4,
         [](){
@@ -37,7 +38,7 @@ int main()
         1000000
     > thread;
 
-    Utils::setupStaticThread(thread);
+    Utils::setupStaticThread(thread, true);
 
     OSAL::sleep(10000000);
 
