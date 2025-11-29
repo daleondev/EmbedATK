@@ -1,7 +1,79 @@
 #include "EmbedATK/EmbedATK.h"
 
+struct GlobalData
+{
+    int i;
+    float f;
+} g_data;
+
+enum class TestEvent {
+    Start,
+    Stop
+};
+
+enum class TestState {
+    Idle,
+    Running
+};
+
+class Idle : public IState<TestState::Idle, GlobalData> {
+public:
+    void onEntry() override { std::cout << "Idle onEntry" << std::endl; }
+    void onActive(IdType*, size_t) override 
+    { 
+        std::cout << "Idle onActive" << std::endl;
+        auto& data = std::get<GlobalData>(getData());
+        std::cout << data.i << " " << data.f << std::endl;
+    }
+    void onExit() override { std::cout << "Idle onExit" << std::endl;  }
+};
+
+class Running : public IState<TestState::Running, GlobalData> {
+public:
+    void onEntry() override { std::cout << "Running onEntry" << std::endl; }
+    void onActive(IdType*, size_t) override { std::cout << "Running onActive" << std::endl; }
+    void onExit() override { std::cout << "Running onExit" << std::endl; }
+};
+
+using TestStates = States<
+    Idle,
+    Running
+>;
+
+using TestTransitions = StateTransitions<
+    StateTransition<Idle, TestEvent::Start, Running>,
+    StateTransition<Running, TestEvent::Stop, Idle>
+>;
+
 int main()
 {
+    StateMachine<TestStates, TestEvent, TestTransitions> stateMachine;
+    g_data.i = 1224.34;
+    g_data.f = -346.4235;
+
+    stateMachine.forEachState([](auto& state) {
+        state.setData(g_data);
+    });
+
+    bool running = true;
+    std::thread t([&]() {
+        while (running) {
+            stateMachine.update();
+            OSAL::sleep(500000);
+        }
+    });
+
+    OSAL::sleep(1000000);
+    stateMachine.sendEvent(TestEvent::Start);
+    OSAL::sleep(1000000);
+    stateMachine.sendEvent(TestEvent::Stop);
+    OSAL::sleep(1000000);
+    running = false;
+
+
+    t.join();
+    return 0;
+
     EATK_INIT_LOG(10);
 
     // auto adapters = INetworkAdapter::getNetworkAdapters();

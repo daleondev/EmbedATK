@@ -112,6 +112,14 @@ public:
         }
     }
 
+    template<class F>
+    constexpr void forEachState(F&& f)
+    {
+        std::apply([func = std::forward<F>(f)](auto&... state) mutable {
+            (std::invoke(func, state), ...);
+        }, m_states);
+    }
+
     constexpr auto currentState() const { return m_activeStatePath[m_activeStatePath.size() - 1]; }
     const auto& currentStatePath() const { return m_activeStatePath; }
 

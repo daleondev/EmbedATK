@@ -23,20 +23,26 @@ template <typename DerivedTypes, typename Base>
 concept IsBaseOfAll = is_base_of_all_v<Base, DerivedTypes>;
 
 namespace detail {
+template <template <typename...> class BaseTemplate, typename... Args>
+void is_templated_base_of(const BaseTemplate<Args...>*);
 template <template <auto...> class BaseTemplate, auto... Args>
 void is_templated_base_of(const BaseTemplate<Args...>*);
+template <template <auto, typename...> class BaseTemplate, auto ID, typename... Args>
+void is_templated_base_of(const BaseTemplate<ID, Args...>*);
 }
 
-template <template <auto...> class BaseTemplate, typename Derived>
-concept is_templated_base_of = requires(Derived* p) {
+template <template <typename...> class BaseTemplate, typename Derived>
+concept is_templated_base_of_typename = requires(Derived* p) {
     detail::is_templated_base_of<BaseTemplate>(p);
 };
-
 template <template <auto...> class BaseTemplate, typename Derived>
-inline constexpr bool is_templated_base_of_v = is_templated_base_of<BaseTemplate, Derived>;
-
-template <typename Derived, template <auto...> class BaseTemplate>
-concept IsTemplatedBaseOf = is_templated_base_of_v<BaseTemplate, Derived>;
+concept is_templated_base_of_auto = requires(Derived* p) {
+    detail::is_templated_base_of<BaseTemplate>(p);
+};
+template <template <auto, typename...> class BaseTemplate, typename Derived>
+concept is_templated_base_of_auto_typename = requires(Derived* p) {
+    detail::is_templated_base_of<BaseTemplate>(p);
+};
 
 //------------------------------------------------------
 //                  Specialization of

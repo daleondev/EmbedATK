@@ -3,7 +3,7 @@
 #include "EmbedATK/Core/Concepts.h"
 
 // Base class which concrete states must inherit from
-template<auto StateId>
+template<auto StateId, typename... T>
 class IState
 {
 public:
@@ -11,19 +11,27 @@ public:
     inline static constexpr IdType ID = StateId;
     inline static constexpr std::string_view NAME = magic_enum::enum_name<StateId>();
 
+    static_assert(magic_enum::is_scoped_enum_v<IdType>);
+
     virtual ~IState() = default;
     
     virtual void onEntry() = 0;
     virtual void onActive(IdType* subStates, size_t numSubStates) = 0;
     virtual void onExit() = 0;
 
-    static_assert(magic_enum::is_scoped_enum_v<IdType>);
+    IState() = default;
+    explicit IState(const T&... args) requires(sizeof...(T) > 0) : m_data(args...) {}
+    void setData(const std::tuple<T...>& data) { m_data = data; }
+    const std::tuple<T...>& getData() const { return m_data; }
+
+private:
+    [[no_unique_address]] std::tuple<T...> m_data;
 };
 
 // Concept for a valid state
 template<class T>
 concept IsState = requires { 
-    requires is_templated_base_of_v<IState, T>;
+    requires is_templated_base_of_auto_typename<IState, T>;
     requires magic_enum::enum_name<T::ID>() == reflect::type_name<T>();
 };
 
