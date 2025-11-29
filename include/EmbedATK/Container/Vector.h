@@ -33,6 +33,14 @@ public:
     virtual constexpr size_t capacity() const noexcept = 0;
 
     // ----------------------------------------
+    // --- data access
+    // ----------------------------------------
+    virtual constexpr ValueType& front() = 0;
+    virtual constexpr const ValueType& front() const = 0;
+    virtual constexpr ValueType& back() = 0;
+    virtual constexpr const ValueType& back() const = 0;
+
+    // ----------------------------------------
     // --- manipulation
     // ----------------------------------------
     virtual void clear() noexcept = 0;
@@ -126,6 +134,10 @@ public:
     const ValueType& operator[](const size_t i) const noexcept override { return m_vector[i]; }
     ValueType& at(size_t i) override { return m_vector.at(i); }
     const ValueType& at(size_t i) const override { return m_vector.at(i); }
+    ValueType& front() override { return m_vector.front(); }
+    const ValueType& front() const override { return m_vector.front(); }
+    ValueType& back() override { return m_vector.back(); }
+    const ValueType& back() const override { return m_vector.back(); }
     
     // ----------------------------------------
     // --- manipulation
@@ -287,6 +299,26 @@ public:
     constexpr const ValueType* data() const noexcept override { return reinterpret_cast<const ValueType*>(m_store.data()); }
     constexpr ValueType& operator[](const size_t index) noexcept override { return data()[index]; }
     constexpr const ValueType& operator[](const size_t index) const noexcept override { return data()[index]; }
+    constexpr ValueType& front() override 
+    {
+        if (empty()) throw std::length_error("vector empty");
+        return *begin(); 
+    }
+    constexpr const ValueType& front() const override
+    {
+        if (empty()) throw std::length_error("vector empty");
+        return *begin(); 
+    }
+    constexpr ValueType& back() override 
+    {
+        if (empty()) throw std::length_error("vector empty");
+        return *(end() - 1); 
+    }
+    constexpr const ValueType& back() const override 
+    {
+        if (empty()) throw std::length_error("vector empty");
+        return *(end() - 1); 
+    }
 
     constexpr ValueType& at(size_t index) override
     { 

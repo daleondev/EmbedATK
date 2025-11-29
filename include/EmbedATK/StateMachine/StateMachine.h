@@ -120,8 +120,9 @@ public:
         }, m_states);
     }
 
-    constexpr auto currentState() const { return m_activeStatePath[m_activeStatePath.size() - 1]; }
-    const auto& currentStatePath() const { return m_activeStatePath; }
+    constexpr StateId prevState() const { return m_prevState; }
+    constexpr StateId currentState() const { return m_activeStatePath.back(); }
+    const StaticVector<StateId, MaxDepth>& currentStatePath() const { return m_activeStatePath; }
 
 private:
     // ------------------------------------------------------
@@ -131,7 +132,7 @@ private:
     {
         if constexpr (NUM_TRANSITIONS > 0)
         {
-            std::optional<StateId> handlerState = m_activeStatePath[m_activeStatePath.size() - 1];
+            std::optional<StateId> handlerState = m_activeStatePath.back();
             while(handlerState)
             {
                 bool transitionFound = false;
@@ -198,6 +199,7 @@ private:
         for(size_t i = m_activeStatePath.size(); i > exitUntil; --i) {
             callOnExit(m_activeStatePath[i-1]);
         }
+        m_prevState = m_activeStatePath.back();
 
         StaticVector<StateId, MaxDepth> newPath;
         const size_t pathCopyUntil = lcaIndex.has_value() ? lcaIndex.value() + 1 : 0;
@@ -210,7 +212,6 @@ private:
             newPath.push_back(toPath[i]);
             callOnEntry(toPath[i]);
         }
-        
         m_activeStatePath = newPath;
 
         enterDefaultChildren();
@@ -251,7 +252,7 @@ private:
     void enterDefaultChildren()
     {
         if constexpr (IS_HIERARCHICAL) {
-            auto lastState = m_activeStatePath[m_activeStatePath.size() - 1];
+            auto lastState = m_activeStatePath.back();
             auto defaultChild = findDefaultChild(lastState);
             while(defaultChild) {
                 m_activeStatePath.push_back(*defaultChild);
@@ -318,6 +319,7 @@ private:
     //                          Data
     // ------------------------------------------------------
     States m_states;
+    StateId m_prevState;
     StaticVector<StateId, MaxDepth> m_activeStatePath;
     std::deque<Events> m_eventQueue;
 };

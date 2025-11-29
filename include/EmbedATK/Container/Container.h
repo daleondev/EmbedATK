@@ -474,8 +474,8 @@ public:
     // ----------------------------------------
     // --- data access
     // ----------------------------------------
-    virtual T& operator[](const std::size_t i) = 0;
-    virtual const T& operator[](const std::size_t i) const = 0;
+    virtual constexpr T& operator[](const std::size_t i) = 0;
+    virtual constexpr const T& operator[](const std::size_t i) const = 0;
     virtual constexpr T& at(size_t index) = 0;
     virtual constexpr const T& at(size_t index) const = 0;
 };
