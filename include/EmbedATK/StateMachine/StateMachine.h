@@ -21,17 +21,20 @@ namespace detail {
 
     template<typename StatesTuple, typename... Groups>
     consteval bool validate_hierarchy_impl(std::tuple<Groups...>) {
-        auto check_children = []<typename... Children>(std::tuple<Children...>) {
-            return (is_type_in_tuple_v<Children, StatesTuple> && ...);
-        };
+        if constexpr (sizeof...(Groups) > 0) {
+            auto check_children = []<typename... Children>(std::tuple<Children...>) {
+                return (is_type_in_tuple_v<Children, StatesTuple> && ...);
+            };
 
-        return (
-            (
-                is_type_in_tuple_v<typename Groups::ParentState, StatesTuple> &&
-                check_children(typename Groups::ChildStates{})
-            ) 
-            && ...
-        ); 
+            return (
+                (
+                    is_type_in_tuple_v<typename Groups::ParentState, StatesTuple> &&
+                    check_children(typename Groups::ChildStates{})
+                ) 
+                && ...
+            ); 
+        }
+        return true;
     }
 }
 

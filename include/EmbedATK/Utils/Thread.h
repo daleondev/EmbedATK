@@ -85,6 +85,7 @@ namespace Utils {
 
             OSAL::createCyclicThread(
                 thread.thread,
+                thread.NAME,
                 thread.PRIO,
                 thread.stackBuff,
                 std::forward<Callable>(func), 
@@ -99,6 +100,7 @@ namespace Utils {
             
             OSAL::createThread(
                 thread.thread,
+                thread.NAME,
                 thread.PRIO,
                 thread.stackBuff,
                 std::forward<Callable>(func), 
