@@ -2,6 +2,8 @@
 
 #include "EmbedATK/OSAL/OSAL.h"
 
+#include <format>
+
 namespace Utils {
 
     using TaskFunction = void(*)();
@@ -26,6 +28,26 @@ namespace Utils {
         
         StaticBuffer<StackSize, alignof(std::max_align_t)> stackBuff;
         Thread thread;
+
+#if !defined(NDEBUG) && defined(__cpp_lib_format)
+        constexpr StaticThread()
+        {
+            std::ranges::fill(stackBuff, std::byte(0xAA));
+        }
+        void printStackUsage() 
+        {
+            size_t used = 0;
+            for (const auto& byte : stackBuff) {
+                if (byte != std::byte(0xAA)) {  
+                    used++;
+                }
+            }
+            std::cout << std::format("'{}' - {} bytes used (available: {} bytes)", NAME, used, stackBuff.size()) << std::endl;
+        }
+#else
+        constexpr StaticThread() = default;
+        void printStackUsage() { }
+#endif
     };
 
     template <typename T>

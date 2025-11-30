@@ -155,6 +155,7 @@
 
         ~Logger()
         {
+            m_thread.printStackUsage();
             m_running = false;
             Utils::emplaceStaticMessageQueue<LogData>(m_queue, LogLevel::Abort, Timestamp{}, "", "");
             Utils::shutdownStaticThread(m_thread);
