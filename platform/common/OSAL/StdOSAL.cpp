@@ -252,11 +252,9 @@ uint64_t StdOSAL::monotonicTimeImpl() const
 
 Timestamp StdOSAL::currentTimeImpl() const 
 {
-    const auto zone = std::chrono::current_zone();
     const auto now = std::chrono::system_clock::now();
-    const auto localTime = std::chrono::zoned_time(zone, now).get_local_time();
-    const auto startOfDay = std::chrono::floor<std::chrono::days>(localTime);
-    const auto timeOfDay = localTime - startOfDay;
+    const auto startOfDay = std::chrono::floor<std::chrono::days>(now);
+    const auto timeOfDay = now - startOfDay;
 
     const auto date = std::chrono::year_month_day(startOfDay);
     const auto time = std::chrono::hh_mm_ss(timeOfDay);
