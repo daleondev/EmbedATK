@@ -22,7 +22,10 @@ bool LinuxThread::start()
     int status = pthread_create(&m_thread, &attr, &LinuxThread::taskWrapper, this);
     pthread_attr_destroy(&attr);
 
-    return status == 0;
+    if (status != 0)
+        return false;
+
+    return pthread_setname_np(m_thread, m_name) == 0;
 }
 
 void LinuxThread::shutdown()
@@ -70,6 +73,9 @@ bool LinuxCyclicThread::start(uint64_t cycleTime_us)
     pthread_attr_destroy(&attr);
 
     if (status != 0)
+        return false;
+
+    if (pthread_setname_np(m_thread, m_name) != 0)
         return false;
 
     sem_wait(&m_started);
