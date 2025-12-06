@@ -3,6 +3,7 @@ set(THREADX_TOOLCHAIN gnu)
 set(TX_ENABLE_STACK_CHECKING ON)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../../external/eclipse_threadx/threadx)
 set(NXD_ENABLE_FILE_SERVERS OFF)
+set(NXD_ENABLE_BSD ON)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../../external/eclipse_threadx/netxduo)
 
 add_library(Platform INTERFACE)
@@ -38,6 +39,10 @@ target_sources(Platform
         ${CMAKE_CURRENT_LIST_DIR}/../../external/stm/stm32h7xx-hal-driver/Src/stm32h7xx_hal_uart_ex.c
         ${CMAKE_CURRENT_LIST_DIR}/../../external/stm/stm32h7xx-hal-driver/Src/stm32h7xx_hal_uart.c
         ${CMAKE_CURRENT_LIST_DIR}/../../external/stm/stm32h7xx-nucleo-bsp/stm32h7xx_nucleo.c
+        ${CMAKE_CURRENT_LIST_DIR}/../../external/stm/lan8742/lan8742.c
+
+        ${CMAKE_CURRENT_LIST_DIR}/../../external/eclipse_threadx/netxduo/common/drivers/ethernet/nx_stm32_eth_driver.c
+        ${CMAKE_CURRENT_LIST_DIR}/../../external/eclipse_threadx/netxduo/common/drivers/ethernet/lan8742/nx_stm32_phy_driver.c
 )
 
 target_include_directories(Platform 
@@ -47,6 +52,10 @@ target_include_directories(Platform
         ${CMAKE_CURRENT_LIST_DIR}/../../external/stm/stm32h7xx-nucleo-bsp
         ${CMAKE_CURRENT_LIST_DIR}/../../external/stm/cmsis-core/Include
         ${CMAKE_CURRENT_LIST_DIR}/../../external/stm/cmsis-device-h7/Include
+        ${CMAKE_CURRENT_LIST_DIR}/../../external/stm/lan8742
+
+        ${CMAKE_CURRENT_LIST_DIR}/../../external/eclipse_threadx/netxduo/common/drivers/ethernet
+        ${CMAKE_CURRENT_LIST_DIR}/../../../../../CubeMX/NetXDuo/Target/
 )
 
 target_compile_definitions(Platform 
@@ -59,8 +68,6 @@ target_compile_definitions(Platform
 
         TX_INCLUDE_USER_DEFINE_FILE
         NX_INCLUDE_USER_DEFINE_FILE
-        NXD_ENABLE_BSD
-        NX_BSD_ENABLE_NATIVE_API
         NX_BSD_RAW_SUPPORT
         NX_DISABLE_BSD_RAW_PACKET_DUPLICATE
         NX_BSD_PRINT_ERRORS

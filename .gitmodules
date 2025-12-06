@@ -25,3 +25,6 @@
 [submodule "external/eclipse_threadx/netxduo"]
 	path = external/eclipse_threadx/netxduo
 	url = https://github.com/STMicroelectronics/stm32-mw-netxduo.git
+[submodule "external/stm/lan8742"]
+	path = external/stm/lan8742
+	url = https://github.com/STMicroelectronics/stm32-lan8742.git
